@@ -9,7 +9,8 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "generate-icons": "node scripts/generate-icons.js",
-    "build:extension": "npm run generate-icons && vite build"
+    "build:extension": "npm run generate-icons && vite build",
+    "package:extension": "npm run build:extension && node scripts/build-extension.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.7",
@@ -41,6 +42,7 @@
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
+    "archiver": "^6.0.2",
     "eslint": "^9.21.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",

@@ -10,6 +10,10 @@
     "contextMenus",
     "activeTab"
   ],
+  "host_permissions": [
+    "https://smart-file-organizer.vercel.app/*",
+    "http://localhost:3000/*"
+  ],
   "action": {
     "default_popup": "index.html",
     "default_icon": {

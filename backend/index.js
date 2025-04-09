@@ -13,9 +13,10 @@ const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGODB_URI;
 
 const corsOptions = {
-  origin: "*",
+  origin: ["http://localhost:5173", "chrome-extension://*"],
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  preflightContinue: false,
+  credentials: true,
+  allowedHeaders: ["Content-Type", "X-Device-ID"]
 };
 app.use(cors(corsOptions));
 

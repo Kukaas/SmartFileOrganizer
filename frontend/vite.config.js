@@ -1,29 +1,33 @@
-import path from "path";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
 
-// https://vite.dev/config/
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(__dirname, './src'),
     },
   },
   build: {
     outDir: 'dist',
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'index.html'),
+        index: path.resolve(__dirname, 'index.html'),
         background: path.resolve(__dirname, 'src/background.js'),
-        content: path.resolve(__dirname, 'src/content.js')
+        content: path.resolve(__dirname, 'src/content.js'),
       },
       output: {
         entryFileNames: '[name].js',
-        chunkFileNames: '[name].js',
-        assetFileNames: '[name].[ext]'
-      }
-    }
-  }
+      },
+    },
+    // Don't minify for troubleshooting
+    minify: process.env.NODE_ENV === 'production',
+    // Copy the manifest and other assets to the dist folder
+    copyPublicDir: true,
+  },
+  // Ensure sourcemaps are generated for debugging
+  sourcemap: true,
 });

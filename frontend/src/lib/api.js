@@ -1,6 +1,7 @@
 import { getDeviceFingerprint } from './deviceFingerprint';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+// Use environment variable for API URL with fallback to localhost
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://smart-file-organizer.vercel.app/api";
 
 // Helper function to make API calls with device fingerprint
 const apiCall = async (endpoint, options = {}) => {
