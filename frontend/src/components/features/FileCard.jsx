@@ -607,8 +607,8 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
       
       {/* Summary Dialog */}
       <Dialog open={summaryDialog} onOpenChange={setSummaryDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto space-y-2">
-          <DialogHeader className="pb-1">
+        <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col overflow-hidden">
+          <DialogHeader className="pb-1 flex-shrink-0 border-b">
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-purple-600" />
               <span className="text-lg font-bold">
@@ -620,7 +620,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-1">
+          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden">
             {isSummarizing ? (
               <div className="flex flex-col items-center justify-center py-6 bg-gray-50 rounded-lg">
                 <BookOpen className="h-10 w-10 text-purple-600 animate-pulse mb-3" />
@@ -643,7 +643,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             )}
           </div>
           
-          <DialogFooter className="pt-1">
+          <DialogFooter className="pt-4 flex-shrink-0 border-t mt-auto">
             <Button 
               type="button"
               variant="outline" 
@@ -675,8 +675,8 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
       
       {/* Analysis Dialog */}
       <Dialog open={analysisDialog} onOpenChange={setAnalysisDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto space-y-2">
-          <DialogHeader className="pb-1">
+        <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col overflow-hidden">
+          <DialogHeader className="pb-1 flex-shrink-0 border-b">
             <DialogTitle className="flex items-center gap-2">
               <FileSearch className="h-4 w-4 text-blue-600" />
               <span className="text-lg font-bold">
@@ -688,7 +688,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-1">
+          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden">
             {isAnalyzing ? (
               <div className="flex flex-col items-center justify-center py-6 bg-gray-50 rounded-lg">
                 <Brain className="h-10 w-10 text-blue-600 animate-pulse mb-3" />
@@ -711,7 +711,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             )}
           </div>
           
-          <DialogFooter className="pt-1">
+          <DialogFooter className="pt-4 flex-shrink-0 border-t mt-auto">
             <Button 
               type="button"
               variant="outline" 
