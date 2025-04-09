@@ -568,12 +568,6 @@ function App() {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Smart File Organizer</h1>
             <div className="flex items-center gap-2">
-              {isLoading && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Processing...</span>
-                </div>
-              )}
               {syncError && (
                 <div className="text-sm text-yellow-600">
                   {syncError}
@@ -600,6 +594,7 @@ function App() {
           onAnalyze={handleAnalyze}
           onSummarize={handleSummarize}
           onDownload={handleDownload}
+          isLoading={isLoading}
         />
       </div>
 

@@ -172,6 +172,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
   const [analysis, setAnalysis] = useState("");
   const [summary, setSummary] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportData, setExportData] = useState({ content: "", title: "", filename: "" });
   const [detailsDialog, setDetailsDialog] = useState(false);
@@ -245,7 +246,12 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
 
   const handleDelete = useCallback(() => {
     setIsDropdownOpen(false); // Close dropdown before delete
-    onDelete?.(file);
+    setIsDeleting(true);
+    
+    Promise.resolve(onDelete?.(file))
+      .finally(() => {
+        setIsDeleting(false);
+      });
   }, [file, onDelete]);
   
   const handleDownload = useCallback(() => {
@@ -746,7 +752,13 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
 
   return (
     <>
-      <Card className="p-3 hover:shadow-md transition-shadow bg-gradient-to-br from-white to-gray-50 border-gray-200 h-full flex flex-col">
+      <Card className="p-3 hover:shadow-md transition-shadow bg-gradient-to-br from-white to-gray-50 border-gray-200 h-full flex flex-col relative">
+        {isDeleting && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-md z-10">
+            <Trash2 className="h-8 w-8 text-red-500 animate-pulse mb-2" />
+            <p className="text-sm font-medium text-red-600">Deleting...</p>
+          </div>
+        )}
         <div className="flex items-start justify-between gap-1">
           <div className="flex items-start gap-2 min-w-0 flex-1">
             <div className="p-1.5 bg-white rounded-md shadow-sm flex items-center justify-center shrink-0">
@@ -854,9 +866,12 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                     <DropdownMenuItem 
                       onSelect={handleDelete}
                       className="gap-2 rounded-sm my-1 px-2 text-gray-700 hover:bg-red-50 focus:bg-red-50"
+                      disabled={isDeleting}
                     >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                      <span className="text-sm">Delete</span>
+                      <Trash2 className={`h-4 w-4 text-red-500 ${isDeleting ? 'animate-pulse' : ''}`} />
+                      <span className="text-sm">
+                        {isDeleting ? 'Deleting...' : 'Delete'}
+                      </span>
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
@@ -917,7 +932,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             <Button 
               type="button"
               onClick={handleRename}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800"
             >
               Rename
             </Button>
