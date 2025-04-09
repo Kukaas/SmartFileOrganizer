@@ -17,6 +17,10 @@ const fileSchema = new mongoose.Schema({
   type: String,
   size: Number,
   url: String,
+  content: {
+    type: String,    // Store encrypted base64 content
+    select: false    // Don't return by default in queries for performance
+  },
   tags: [String],
   status: {
     type: String,

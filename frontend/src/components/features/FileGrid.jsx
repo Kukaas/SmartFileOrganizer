@@ -1,7 +1,7 @@
 import { FileCard } from './FileCard';
 import { motion } from 'framer-motion';
 
-export function FileGrid({ files, onDelete, onRename, onAnalyze, onSummarize }) {
+export function FileGrid({ files, onDelete, onRename, onAnalyze, onSummarize, onDownload }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
       {files.map((file, index) => (
@@ -18,6 +18,7 @@ export function FileGrid({ files, onDelete, onRename, onAnalyze, onSummarize }) 
             onRename={onRename}
             onAnalyze={onAnalyze}
             onSummarize={onSummarize}
+            onDownload={onDownload}
           />
         </motion.div>
       ))}

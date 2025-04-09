@@ -8,6 +8,7 @@ router.post('/sync', fileController.syncFiles);
 router.get('/', fileController.getFiles);
 router.patch('/:fileId', fileController.updateFile);
 router.delete('/:fileId', fileController.deleteFile);
+router.get('/:fileId/download', fileController.downloadFile);
 
 // Device routes
 router.get('/device/info', fileController.getDeviceInfo);

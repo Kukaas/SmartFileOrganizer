@@ -1,5 +1,6 @@
 import { Device } from '../models/Device.js';
 import { File } from '../models/File.js';
+import { encryptContent, decryptContent } from '../utils/encryption.js';
 
 // Get or create device
 const getOrCreateDevice = async (deviceId, deviceInfo) => {
@@ -42,6 +43,16 @@ export const fileController = {
           return null;
         }
         
+        // Handle file content if present
+        let encryptedContent = undefined;
+        if (file.content) {
+          try {
+            encryptedContent = encryptContent(file.content);
+          } catch (error) {
+            console.error(`Error encrypting content for file ${file.fileId}:`, error);
+          }
+        }
+        
         return File.findOneAndUpdate(
           { deviceId, fileId: file.fileId },
           {
@@ -54,7 +65,8 @@ export const fileController = {
             tags: file.tags,
             status: file.status,
             dateAdded: file.dateAdded,
-            lastModified: new Date()
+            lastModified: new Date(),
+            ...(encryptedContent && { content: encryptedContent })
           },
           { upsert: true, new: true }
         );
@@ -106,12 +118,26 @@ export const fileController = {
         return res.status(400).json({ error: 'Device ID is required' });
       }
 
+      // Handle file content if present
+      let encryptedContent;
+      if (updates.content) {
+        try {
+          encryptedContent = encryptContent(updates.content);
+          // Remove the original content from updates
+          delete updates.content;
+        } catch (error) {
+          console.error(`Error encrypting content for file ${fileId}:`, error);
+          return res.status(500).json({ error: 'Failed to encrypt file content' });
+        }
+      }
+
       // Find the specific file by both deviceId and fileId
       const file = await File.findOneAndUpdate(
         { deviceId, fileId },
         { 
           $set: {
             ...updates,
+            ...(encryptedContent && { content: encryptedContent }),
             lastModified: new Date()
           }
         },
@@ -126,6 +152,48 @@ export const fileController = {
     } catch (error) {
       console.error('Error updating file:', error);
       res.status(500).json({ error: 'Failed to update file' });
+    }
+  },
+
+  // Download a file
+  downloadFile: async (req, res) => {
+    try {
+      const deviceId = req.headers['x-device-id'];
+      const { fileId } = req.params;
+
+      if (!deviceId) {
+        return res.status(400).json({ error: 'Device ID is required' });
+      }
+
+      // Get the file with content
+      const file = await File.findOne({ deviceId, fileId }).select('+content');
+
+      if (!file) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      if (!file.content) {
+        return res.status(404).json({ error: 'File content not available' });
+      }
+
+      try {
+        // Decrypt the content
+        const decryptedContent = decryptContent(file.content);
+        
+        // Return the decrypted content
+        res.json({
+          fileId: file.fileId,
+          name: file.name,
+          type: file.type,
+          content: decryptedContent
+        });
+      } catch (error) {
+        console.error(`Error decrypting content for file ${fileId}:`, error);
+        return res.status(500).json({ error: 'Failed to decrypt file content' });
+      }
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      res.status(500).json({ error: 'Failed to download file' });
     }
   },
 

@@ -142,7 +142,8 @@ function App() {
           dateAdded: new Date().toISOString(),
           tags: tags,
           status: 'pending_analysis',
-          url: URL.createObjectURL(file)
+          url: URL.createObjectURL(file),
+          _file: file, // Keep the original file object for content processing
         };
       });
 
@@ -156,7 +157,7 @@ function App() {
         
         // Sync with server
         try {
-          await api.syncFiles(updatedFiles);
+          const serverFiles = await api.syncFiles(processedFiles);
           setSyncError(null);
         } catch (error) {
           console.error('Error syncing with server:', error);
@@ -310,6 +311,36 @@ function App() {
     }
   };
 
+  const handleDownload = async (file) => {
+    try {
+      setIsLoading(true);
+      
+      // Download the file from server
+      const { blob, fileName } = await api.downloadFile(file);
+      
+      // Create a download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName || file.name;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      setSyncError(null);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      setSyncError('Failed to download file from server');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const filteredFiles = files.filter(file => {
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
     
@@ -370,6 +401,7 @@ function App() {
           onRename={handleRename}
           onAnalyze={handleAnalyze}
           onSummarize={handleSummarize}
+          onDownload={handleDownload}
         />
       </div>
     </div>

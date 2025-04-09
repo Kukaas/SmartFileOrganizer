@@ -10,7 +10,13 @@ export function FileUpload({ onFilesSelected }) {
 
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles && acceptedFiles.length > 0) {
-      setFiles(prev => [...prev, ...acceptedFiles]);
+      // Store the complete file objects
+      const filesWithMetadata = acceptedFiles.map(file => ({
+        _file: file, // Keep the original file object for content processing
+        preview: URL.createObjectURL(file)
+      }));
+      
+      setFiles(prev => [...prev, ...filesWithMetadata]);
       onFilesSelected?.(acceptedFiles);
     }
   }, [onFilesSelected]);
@@ -20,7 +26,13 @@ export function FileUpload({ onFilesSelected }) {
     event.stopPropagation();
     const selectedFiles = Array.from(event.target.files || []);
     if (selectedFiles.length > 0) {
-      setFiles(prev => [...prev, ...selectedFiles]);
+      // Store the complete file objects
+      const filesWithMetadata = selectedFiles.map(file => ({
+        _file: file, // Keep the original file object for content processing
+        preview: URL.createObjectURL(file)
+      }));
+      
+      setFiles(prev => [...prev, ...filesWithMetadata]);
       onFilesSelected?.(selectedFiles);
     }
   };
@@ -32,6 +44,10 @@ export function FileUpload({ onFilesSelected }) {
       'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'text/plain': ['.txt'],
+      'application/zip': ['.zip'],
+      'video/*': ['.mp4', '.mov', '.avi'],
+      'audio/*': ['.mp3', '.wav'],
     },
     noClick: true, // Disable click handling from react-dropzone
     useFsAccessApi: false, // Use the legacy API for better compatibility
@@ -60,7 +76,7 @@ export function FileUpload({ onFilesSelected }) {
           ref={fileInputRef}
           onChange={handleFileSelect}
           onClick={(e) => e.stopPropagation()}
-          accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx"
+          accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx,.txt,.zip,.mp4,.mov,.avi,.mp3,.wav"
         />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -72,7 +88,7 @@ export function FileUpload({ onFilesSelected }) {
                 {isDragActive ? 'Drop files here' : 'Drop files here or'}
               </p>
               <p className="text-xs text-muted-foreground">
-                Support images, PDFs, and documents
+                Supports images, documents, archives, video, and audio
               </p>
             </div>
           </div>
@@ -95,7 +111,7 @@ export function FileUpload({ onFilesSelected }) {
               className="flex items-center gap-2 py-1 px-2 bg-muted rounded-full text-xs"
             >
               <File className="h-3 w-3" />
-              <span className="max-w-[120px] truncate">{file.name}</span>
+              <span className="max-w-[120px] truncate">{file._file?.name}</span>
               <button
                 type="button"
                 onClick={(e) => {

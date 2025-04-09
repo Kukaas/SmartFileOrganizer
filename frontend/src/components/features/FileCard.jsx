@@ -12,7 +12,8 @@ import {
   BookOpen,
   Brain,
   FileSearch,
-  Sparkles
+  Sparkles,
+  Download
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize }) {
+export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onDownload }) {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [newFileName, setNewFileName] = useState(file.name);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -46,6 +47,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize }) {
   const [summaryDialog, setSummaryDialog] = useState(false);
   const [analysis, setAnalysis] = useState("");
   const [summary, setSummary] = useState("");
+  const [isDownloading, setIsDownloading] = useState(false);
   
   const menuTriggerRef = useRef(null);
   const inputRef = useRef(null);
@@ -76,6 +78,16 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize }) {
     setIsDropdownOpen(false); // Close dropdown before delete
     onDelete?.(file);
   }, [file, onDelete]);
+  
+  const handleDownload = useCallback(() => {
+    setIsDropdownOpen(false);
+    setIsDownloading(true);
+    
+    onDownload?.(file)
+      .finally(() => {
+        setIsDownloading(false);
+      });
+  }, [file, onDownload]);
   
   const handleAnalyze = useCallback(() => {
     setIsDropdownOpen(false);
@@ -231,6 +243,17 @@ The document recommends focusing on scaling the Singapore market presence in Q2 
                 >
                   <DropdownMenuItem onSelect={openRenameDialog} className="gap-2">
                     <span className="text-sm">Rename</span>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem 
+                    onSelect={handleDownload}
+                    className="gap-2 text-green-600"
+                    disabled={isDownloading}
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="text-sm">
+                      {isDownloading ? 'Downloading...' : 'Download'}
+                    </span>
                   </DropdownMenuItem>
                   
                   {isDocument && (
