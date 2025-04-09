@@ -683,7 +683,6 @@ export function FileCard({
         title: `AI Analysis: ${file.name}`,
         filename: `${file.name.split('.')[0]}-analysis`
       });
-      toast.success(`Preparing analysis of "${file.name}" for export`);
     } else {
       setExportData({
         content: summary,

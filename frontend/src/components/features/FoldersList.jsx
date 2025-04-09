@@ -23,6 +23,17 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 
+// Global variable to track the active dropdown
+let activeDropdown = null;
+
+// Function to close active dropdown
+const closeActiveDropdown = () => {
+  if (activeDropdown && document.body.contains(activeDropdown)) {
+    document.body.removeChild(activeDropdown);
+    activeDropdown = null;
+  }
+};
+
 export function FoldersList({ 
   folders, 
   currentFolderId, 
@@ -212,11 +223,40 @@ export function FoldersList({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    
+                    // Close any active dropdown first
+                    closeActiveDropdown();
+                    
                     const rect = e.currentTarget.getBoundingClientRect();
                     const dropdown = document.createElement('div');
                     dropdown.className = 'absolute bg-background border border-border rounded-md shadow-md z-50 py-1 min-w-[160px]';
-                    dropdown.style.top = `${rect.bottom + 5}px`;
-                    dropdown.style.left = `${rect.right - 160}px`; // Position to the left of the button
+                    
+                    // Store reference to current dropdown
+                    activeDropdown = dropdown;
+                    
+                    // Get viewport dimensions
+                    const viewportHeight = window.innerHeight;
+                    const dropdownHeight = 200; // Approximate height of dropdown
+                    
+                    // Check if dropdown would go below viewport
+                    const bottomSpace = viewportHeight - rect.bottom;
+                    const showAbove = bottomSpace < dropdownHeight;
+                    
+                    if (showAbove) {
+                      // Position above the button if not enough space below
+                      dropdown.style.bottom = `${viewportHeight - rect.top + 5}px`;
+                    } else {
+                      // Position below the button
+                      dropdown.style.top = `${rect.bottom + 5}px`;
+                    }
+                    
+                    // Horizontal positioning, ensure it stays within viewport
+                    const rightSpace = window.innerWidth - rect.right;
+                    if (rightSpace < 160) {
+                      dropdown.style.right = `${window.innerWidth - rect.right}px`;
+                    } else {
+                      dropdown.style.left = `${rect.right - 160}px`; // Position to the left of the button
+                    }
                     
                     // Create options
                     const newSubfolder = document.createElement('button');
@@ -270,12 +310,18 @@ export function FoldersList({
                     // Close dropdown when clicking outside
                     const closeDropdown = (event) => {
                       if (!dropdown.contains(event.target) && event.target !== e.currentTarget) {
-                        document.body.removeChild(dropdown);
+                        if (document.body.contains(dropdown)) {
+                          document.body.removeChild(dropdown);
+                          activeDropdown = null;
+                        }
                         document.removeEventListener('click', closeDropdown);
                       }
                     };
                     
-                    document.addEventListener('click', closeDropdown);
+                    // Use setTimeout to ensure this event listener runs after the current click event
+                    setTimeout(() => {
+                      document.addEventListener('click', closeDropdown);
+                    }, 0);
                     
                     // Append dropdown to body
                     document.body.appendChild(dropdown);
