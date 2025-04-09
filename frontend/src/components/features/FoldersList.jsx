@@ -20,14 +20,8 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
 export function FoldersList({ 
   folders, 
@@ -82,6 +76,7 @@ export function FoldersList({
   const createFolder = useCallback(async () => {
     if (!newFolderName.trim()) {
       setErrorMessage('Folder name cannot be empty');
+      toast.error('Folder name cannot be empty');
       return;
     }
     
@@ -112,6 +107,7 @@ export function FoldersList({
   const renameFolder = useCallback(async () => {
     if (!newFolderName.trim()) {
       setErrorMessage('Folder name cannot be empty');
+      toast.error('Folder name cannot be empty');
       return;
     }
     
@@ -162,6 +158,8 @@ export function FoldersList({
   const handleFolderSelect = (folderId, e) => {
     if (e) e.stopPropagation();
     if (onFolderSelect) {
+      const selectedFolder = folders.find(f => f.folderId === folderId);
+      const folderName = selectedFolder ? selectedFolder.name : 'Home';
       onFolderSelect(folderId);
     }
   };

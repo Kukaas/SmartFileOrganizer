@@ -9,6 +9,7 @@ import { Loader2, RefreshCw, FolderIcon, MoveIcon } from 'lucide-react';
 import { api } from '@/lib/api';
 import { regenerateDeviceFingerprint } from '@/lib/deviceFingerprint';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { toast } from 'sonner';
 
 // Add custom scrollbar styles
 const scrollbarStyles = `
@@ -258,6 +259,7 @@ function App() {
       if (!fileToDelete.fileId) {
         console.error('Cannot delete file without fileId:', fileToDelete);
         setSyncError('Failed to delete file: Invalid file ID');
+        toast.error('Failed to delete file: Invalid file ID');
         return;
       }
 
@@ -274,9 +276,11 @@ function App() {
       });
       
       setSyncError(null);
+      toast.success(`File "${fileToDelete.name}" deleted successfully`);
     } catch (error) {
       console.error('Error deleting file:', error);
       setSyncError('Failed to delete file from server');
+      toast.error('Failed to delete file from server');
     }
   };
 
@@ -285,6 +289,7 @@ function App() {
       if (!file.fileId) {
         console.error('Cannot rename file without fileId:', file);
         setSyncError('Failed to rename file: Invalid file ID');
+        toast.error('Failed to rename file: Invalid file ID');
         return;
       }
 
@@ -306,9 +311,12 @@ function App() {
           setSyncError(null);
         });
       });
+      
+      toast.success(`File renamed to "${newName}"`);
     } catch (error) {
       console.error('Error renaming file:', error);
       setSyncError('Failed to update file on server');
+      toast.error('Failed to update file on server');
       
       // Revert the state if server update failed
       setFiles(currentFiles => 
@@ -347,6 +355,7 @@ function App() {
         chrome.storage.local.set({ files: updatedFiles });
       });
       
+      toast.success(`Analysis complete for "${file.name}"`);
       return analysisResult;
     } catch (error) {
       console.error('Error analyzing file:', error);
@@ -397,6 +406,7 @@ function App() {
       }
       
       setSyncError(errorMessage);
+      toast.error(errorMessage);
       throw error;
     }
   };
@@ -431,6 +441,7 @@ function App() {
         chrome.storage.local.set({ files: updatedFiles });
       });
       
+      toast.success(`Summary complete for "${file.name}"`);
       return summaryResult;
     } catch (error) {
       console.error('Error summarizing file:', error);
@@ -480,15 +491,13 @@ function App() {
       }
       
       setSyncError(errorMessage);
+      toast.error(errorMessage);
       throw error;
     }
   };
 
   const handleDownload = async (file) => {
     try {
-      // Don't set the global isLoading state here, as we're using component-level loading state
-      // setIsLoading(true);
-      
       // Download the file from server
       const { blob, fileName } = await api.downloadFile(file);
       
@@ -507,14 +516,13 @@ function App() {
       }, 100);
       
       setSyncError(null);
+      toast.success(`Downloaded "${file.name}" successfully`);
       return { success: true };
     } catch (error) {
       console.error('Error downloading file:', error);
       setSyncError('Failed to download file from server');
+      toast.error('Failed to download file from server');
       throw error; // Rethrow the error to allow .catch in the caller
-    } finally {
-      // Don't reset the global isLoading state here
-      // setIsLoading(false);
     }
   };
 
@@ -561,10 +569,12 @@ function App() {
       await chrome.storage.local.set({ folders: updatedFolders });
       
       setSyncError(null);
+      toast.success(`Folder "${name}" created successfully`);
       return updatedFolders;
     } catch (error) {
       console.error('Error creating folder:', error);
       setSyncError('Failed to create folder');
+      toast.error(`Failed to create folder: ${error.message || 'Unknown error'}`);
       throw error;
     } finally {
       setIsLoading(false);
@@ -582,10 +592,12 @@ function App() {
       await chrome.storage.local.set({ folders: updatedFolders });
       
       setSyncError(null);
+      toast.success(`Folder renamed to "${newName}"`);
       return updatedFolders;
     } catch (error) {
       console.error('Error renaming folder:', error);
       setSyncError('Failed to rename folder');
+      toast.error(`Failed to rename folder: ${error.message || 'Unknown error'}`);
       throw error;
     } finally {
       setIsLoading(false);
@@ -596,6 +608,10 @@ function App() {
   const handleDeleteFolder = async (folderId) => {
     try {
       setIsLoading(true);
+      // Get the folder name before deleting
+      const folderToDelete = folders.find(f => f.folderId === folderId);
+      const folderName = folderToDelete ? folderToDelete.name : 'folder';
+      
       const updatedFolders = await api.deleteFolder(folderId);
       setFolders(updatedFolders);
       
@@ -615,10 +631,12 @@ function App() {
       }
       
       setSyncError(null);
+      toast.success(`Folder "${folderName}" deleted successfully`);
       return updatedFolders;
     } catch (error) {
       console.error('Error deleting folder:', error);
       setSyncError('Failed to delete folder');
+      toast.error(`Failed to delete folder: ${error.message || 'Unknown error'}`);
       throw error;
     } finally {
       setIsLoading(false);
@@ -636,6 +654,10 @@ function App() {
   const handleMoveFiles = async (fileIds, targetFolderId) => {
     try {
       setIsLoading(true);
+      // Get the target folder name
+      const targetFolder = folders.find(f => f.folderId === targetFolderId);
+      const targetName = targetFolder ? targetFolder.name : 'destination folder';
+      
       const updatedFiles = await api.moveFilesToFolder(fileIds, targetFolderId);
       
       // Refresh file list after move
@@ -649,9 +671,11 @@ function App() {
       setSelectedFiles([]);
       
       setSyncError(null);
+      toast.success(`${fileIds.length} file(s) moved to ${targetFolderId ? `"${targetName}"` : 'Home'}`);
     } catch (error) {
       console.error('Error moving files:', error);
       setSyncError('Failed to move files');
+      toast.error(`Failed to move files: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }

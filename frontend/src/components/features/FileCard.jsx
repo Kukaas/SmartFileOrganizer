@@ -18,7 +18,8 @@ import {
   FileOutput,
   Trash2,
   Pencil,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ExportPreviewDialog } from './ExportPreviewDialog';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 // Component to cleanly display content without markdown conversion
 function ContentDisplay({ content, color = "purple" }) {
@@ -245,6 +247,10 @@ export function FileCard({
     if (newFileName.trim() && newFileName !== file.name) {
       setIsRenaming(true);
       Promise.resolve(onRename?.(file, newFileName.trim()))
+        .then(() => {
+        })
+        .catch(error => {
+        })
         .finally(() => {
           setIsRenaming(false);
         });
@@ -263,6 +269,12 @@ export function FileCard({
     setIsDeleting(true);
     
     Promise.resolve(onDelete?.(file))
+      .then(() => {
+        // The main toast will be shown by the App component
+      })
+      .catch(error => {
+        toast.error(`Failed to delete file: ${error.message || 'Unknown error'}`);
+      })
       .finally(() => {
         setIsDeleting(false);
       });
@@ -273,6 +285,12 @@ export function FileCard({
     setIsDownloading(true);
     
     Promise.resolve(onDownload?.(file))
+      .then(() => {
+        // The main toast will be shown by the App component
+      })
+      .catch(error => {
+
+      })
       .finally(() => {
         setIsDownloading(false);
       });
@@ -282,6 +300,7 @@ export function FileCard({
     setIsDropdownOpen(false);
     setDetailsDialog(true);
     setFileDetails({ content: "", isLoading: true, error: null });
+    
     
     // Call the API to download the file and decode it
     api.downloadFile(file)
@@ -387,6 +406,7 @@ export function FileCard({
                 isLoading: false,
                 error: `Failed to decode file content: ${error.message}`
               });
+              toast.error(`Failed to load file details: ${error.message}`);
             }
           };
           
@@ -396,6 +416,7 @@ export function FileCard({
               isLoading: false,
               error: "Failed to read file content"
             });
+            toast.error("Failed to read file content");
           };
           
           // Read as text for text files, otherwise as binary string
@@ -465,12 +486,14 @@ export function FileCard({
                 error: null
               });
             }
+            toast.success(`File details loaded successfully`);
           } catch (error) {
             setFileDetails({
               content: "",
               isLoading: false,
               error: `Failed to decode base64 content: ${error.message}`
             });
+            toast.error(`Failed to decode file content: ${error.message}`);
           }
         } else {
           setFileDetails({
@@ -478,6 +501,7 @@ export function FileCard({
             isLoading: false,
             error: "No file content available"
           });
+          toast.error("No file content available");
         }
       })
       .catch(error => {
@@ -487,6 +511,7 @@ export function FileCard({
           isLoading: false,
           error: error.message || "Failed to load file details"
         });
+        toast.error(`Failed to load file details: ${error.message || "Unknown error"}`);
       });
   }, [file, fileExtension]);
   
@@ -495,7 +520,7 @@ export function FileCard({
     setIsAnalyzing(true);
     setAnalysisDialog(true);
     setAnalysis("");
-
+    
     // Call the API to analyze the file
     onAnalyze?.(file)
       .then(result => {   
@@ -577,6 +602,7 @@ export function FileCard({
         
         setAnalysis(`# Analysis Error\n\n${errorMessage}`);
         setIsAnalyzing(false);
+        toast.error(errorMessage);
       });
   }, [file, onAnalyze]);
   
@@ -585,7 +611,7 @@ export function FileCard({
     setIsSummarizing(true);
     setSummaryDialog(true);
     setSummary("");
-
+    
     // Call the API to get file summary
     onSummarize?.(file)
       .then(result => {
@@ -644,7 +670,8 @@ export function FileCard({
       .catch(error => {
         console.error('Error summarizing file:', error);
         setSummary(`# Summarization Error\n\nFailed to summarize file: ${error.message}`);
-      setIsSummarizing(false);
+        setIsSummarizing(false);
+        toast.error(`Failed to summarize file: ${error.message || 'Unknown error'}`);
       });
   }, [file, onSummarize]);
 
@@ -656,12 +683,14 @@ export function FileCard({
         title: `AI Analysis: ${file.name}`,
         filename: `${file.name.split('.')[0]}-analysis`
       });
+      toast.success(`Preparing analysis of "${file.name}" for export`);
     } else {
       setExportData({
         content: summary,
         title: `AI Summary: ${file.name}`,
         filename: `${file.name.split('.')[0]}-summary`
       });
+      toast.success(`Preparing summary of "${file.name}" for export`);
     }
     setIsExportDialogOpen(true);
   };
@@ -724,7 +753,23 @@ export function FileCard({
   };
 
   return (
-    <Card className={`overflow-hidden ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`}>
+    <Card className={`overflow-hidden ${isSelected ? 'ring-2 ring-primary border-primary' : ''} relative`}>
+      {/* Loading overlay for operations */}
+      {(isDeleting || isRenaming || isDownloading) && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-30 flex flex-col items-center justify-center">
+          <Loader2 className={`h-8 w-8 mb-2 animate-spin ${
+            isDeleting ? 'text-red-500' : 
+            isRenaming ? 'text-blue-500' : 
+            'text-green-500'
+          }`} />
+          <p className="text-sm font-medium">
+            {isDeleting && 'Deleting...'}
+            {isRenaming && 'Renaming...'}
+            {isDownloading && 'Downloading...'}
+          </p>
+        </div>
+      )}
+      
       <div className="flex justify-between items-start p-3 border-b border-border bg-card-header">
         <div className="flex items-center flex-1 min-w-0 mr-2">
           {onToggleSelect && (
