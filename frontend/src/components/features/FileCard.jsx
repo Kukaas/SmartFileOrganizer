@@ -123,8 +123,8 @@ function ContentDisplay({ content, color = "purple" }) {
           
           return (
             <div key={index} className="flex space-x-2 ml-3 text-sm">
-              <span className="text-gray-700 mt-0.5">•</span>
-              <div className="text-gray-700 flex-1">
+              <span className="text-foreground mt-0.5">•</span>
+              <div className="text-foreground flex-1">
                 {/* If content has bold markers, handle them */}
                 {content.includes('**') ? (
                   <p dangerouslySetInnerHTML={{ 
@@ -707,16 +707,16 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
 
   return (
     <>
-      <Card className="p-3 hover:shadow-md transition-shadow bg-gradient-to-br from-white to-gray-50 border-gray-200 h-full flex flex-col relative">
+      <Card className="p-3 hover:shadow-md transition-shadow bg-gradient-to-br from-background to-muted border-border h-full flex flex-col relative">
         {isDeleting && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-md z-10">
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-md z-10">
             <Trash2 className="h-8 w-8 text-red-500 animate-pulse mb-2" />
             <p className="text-sm font-medium text-red-600">Deleting...</p>
           </div>
         )}
         <div className="flex items-start justify-between gap-1">
           <div className="flex items-start gap-2 min-w-0 flex-1">
-            <div className="p-1.5 bg-white rounded-md shadow-sm flex items-center justify-center shrink-0">
+            <div className="p-1.5 bg-background rounded-md shadow-sm flex items-center justify-center shrink-0">
               {getFileIcon(file.type)}
             </div>
             <div className="space-y-0.5 overflow-hidden min-w-0">
@@ -748,7 +748,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
               <DropdownMenuTrigger asChild>
                 <button
                   ref={menuTriggerRef}
-                  className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-full transition-colors"
                   aria-label="File options"
                   type="button"
                 >
@@ -760,19 +760,19 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                   align="end" 
                   side="right"
                   sideOffset={5}
-                  className="z-50 shadow-lg border border-gray-200 rounded-md"
+                  className="z-50 shadow-lg border border-border rounded-md"
                 >
                   {/* File Operations Category */}
-                  <DropdownMenuLabel className="text-xs font-semibold text-gray-600 pt-2 pb-1 px-3 border-b border-gray-100">File Operations</DropdownMenuLabel>
+                  <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground pt-2 pb-1 px-3">File Operations</DropdownMenuLabel>
                   <DropdownMenuGroup className="px-1">
-                    <DropdownMenuItem onSelect={openRenameDialog} className="gap-2 rounded-sm my-1 px-2 text-gray-700 hover:bg-blue-50 focus:bg-blue-50">
+                    <DropdownMenuItem onSelect={openRenameDialog} className="gap-2 rounded-sm my-1 px-2 text-foreground hover:bg-primary/10 focus:bg-primary/10">
                       <Pencil className="h-4 w-4 text-blue-500" />
                       <span className="text-sm">Rename</span>
                     </DropdownMenuItem>
                     
                     <DropdownMenuItem 
                       onSelect={handleDownload}
-                      className="gap-2 rounded-sm my-1 px-2 text-gray-700 hover:bg-green-50 focus:bg-green-50"
+                      className="gap-2 rounded-sm my-1 px-2 text-foreground hover:bg-primary/10 focus:bg-primary/10"
                       disabled={isDownloading}
                     >
                       <Download className="h-4 w-4 text-green-500" />
@@ -783,7 +783,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                     
                     <DropdownMenuItem 
                       onSelect={handleViewDetails}
-                      className="gap-2 rounded-sm my-1 px-2 text-gray-700 hover:bg-cyan-50 focus:bg-cyan-50"
+                      className="gap-2 rounded-sm my-1 px-2 text-foreground hover:bg-primary/10 focus:bg-primary/10"
                     >
                       <Eye className="h-4 w-4 text-cyan-500" />
                       <span className="text-sm">View Details</span>
@@ -793,19 +793,19 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                   {/* AI Tools Category - only shown for analyzable files */}
                   {isAnalyzableDocument && !isNonAnalyzableFile && (
                     <>
-                      <DropdownMenuSeparator className="my-1 mx-1 bg-gray-100" />
-                      <DropdownMenuLabel className="text-xs font-semibold text-gray-600 pt-2 pb-1 px-3 border-b border-gray-100">AI Tools</DropdownMenuLabel>
+                      <DropdownMenuSeparator className="my-1 mx-1 bg-muted" />
+                      <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground pt-2 pb-1 px-3">AI Tools</DropdownMenuLabel>
                       <DropdownMenuGroup className="px-1">
                         <DropdownMenuItem 
                           onSelect={handleAnalyze}
-                          className="gap-2 rounded-sm my-1 px-2 text-gray-700 hover:bg-blue-50 focus:bg-blue-50"
+                          className="gap-2 rounded-sm my-1 px-2 text-foreground hover:bg-primary/10 focus:bg-primary/10"
                         >
                           <FileSearch className="h-4 w-4 text-blue-500" />
                           <span className="text-sm">Analyze with AI</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onSelect={handleSummarize}
-                          className="gap-2 rounded-sm my-1 px-2 text-gray-700 hover:bg-purple-50 focus:bg-purple-50"
+                          className="gap-2 rounded-sm my-1 px-2 text-foreground hover:bg-primary/10 focus:bg-primary/10"
                         >
                           <Sparkles className="h-4 w-4 text-purple-500" />
                           <span className="text-sm">Summarize with AI</span>
@@ -815,12 +815,12 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                   )}
                   
                   {/* Danger Zone Category */}
-                  <DropdownMenuSeparator className="my-1 mx-1 bg-gray-100" />
-                  <DropdownMenuLabel className="text-xs font-semibold text-gray-600 pt-2 pb-1 px-3 border-b border-gray-100">Danger Zone</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="my-1 mx-1 bg-muted" />
+                  <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground pt-2 pb-1 px-3">Danger Zone</DropdownMenuLabel>
                   <DropdownMenuGroup className="px-1">
                     <DropdownMenuItem 
                       onSelect={handleDelete}
-                      className="gap-2 rounded-sm my-1 px-2 text-gray-700 hover:bg-red-50 focus:bg-red-50"
+                      className="gap-2 rounded-sm my-1 px-2 text-foreground hover:bg-destructive/10 focus:bg-destructive/10"
                       disabled={isDeleting}
                     >
                       <Trash2 className={`h-4 w-4 text-red-500 ${isDeleting ? 'animate-pulse' : ''}`} />
@@ -838,7 +838,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
         {file.tags && file.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {file.tags.map((tag, index) => (
-              <Badge key={index} variant="secondary" className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 hover:bg-gray-200">
+              <Badge key={index} variant="secondary" className="text-xs px-2 py-0.5 bg-muted text-muted-foreground hover:bg-muted/80">
                 {tag}
               </Badge>
             ))}
@@ -887,7 +887,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             <Button 
               type="button"
               onClick={handleRename}
-              className="bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800"
+              className="bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white"
             >
               Rename
             </Button>
@@ -910,24 +910,24 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white to-purple-50">
+          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-background via-background to-purple-50/10 dark:from-background dark:via-background dark:to-purple-700/10">
             {isSummarizing ? (
-              <div className="flex flex-col items-center justify-center py-6 bg-gray-50 rounded-lg">
+              <div className="flex flex-col items-center justify-center py-6 bg-muted rounded-lg">
                 <BookOpen className="h-10 w-10 text-purple-600 animate-pulse mb-3" />
-                <p className="text-base font-medium text-gray-700 mb-2">AI is summarizing your document...</p>
+                <p className="text-base font-medium text-foreground mb-2">AI is summarizing your document...</p>
                 <div className="space-y-1 w-64">
                   <div className="h-2 bg-purple-200 rounded animate-pulse"></div>
                   <div className="h-2 bg-purple-300 rounded animate-pulse"></div>
                   <div className="h-2 bg-purple-200 rounded animate-pulse"></div>
                 </div>
-                <p className="text-sm text-gray-500 mt-3">Creating a concise overview of key points</p>
+                <p className="text-sm text-muted-foreground mt-3">Creating a concise overview of key points</p>
               </div>
             ) : (
-              <div className="px-2 text-sm max-w-none rounded-lg text-gray-700">
+              <div className="px-2 text-sm max-w-none rounded-lg text-foreground">
                 {summary ? (
                   <ContentDisplay content={summary} />
                 ) : (
-                  <div className="bg-gray-50 p-4 rounded-md text-gray-500">No summary results available</div>
+                  <div className="bg-muted p-4 rounded-md text-muted-foreground">No summary results available</div>
                 )}
               </div>
             )}
@@ -970,24 +970,24 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white to-blue-50">
+          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-background via-background to-blue-50/10 dark:from-background dark:via-background dark:to-blue-700/10">
             {isAnalyzing ? (
-              <div className="flex flex-col items-center justify-center py-6 bg-gray-50 rounded-lg">
+              <div className="flex flex-col items-center justify-center py-6 bg-muted rounded-lg">
                 <Brain className="h-10 w-10 text-blue-600 animate-pulse mb-3" />
-                <p className="text-base font-medium text-gray-700 mb-2">AI is analyzing your document...</p>
+                <p className="text-base font-medium text-foreground mb-2">AI is analyzing your document...</p>
                 <div className="space-y-1 w-64">
                   <div className="h-2 bg-blue-200 rounded animate-pulse"></div>
                   <div className="h-2 bg-blue-300 rounded animate-pulse"></div>
                   <div className="h-2 bg-blue-200 rounded animate-pulse"></div>
                 </div>
-                <p className="text-sm text-gray-500 mt-3">Identifying key topics, entities, and insights</p>
+                <p className="text-sm text-muted-foreground mt-3">Identifying key topics, entities, and insights</p>
               </div>
             ) : (
-              <div className="px-2 text-sm max-w-none rounded-lg text-gray-700">
+              <div className="px-2 text-sm max-w-none rounded-lg text-foreground">
                 {analysis ? (
                   <ContentDisplay content={analysis} color="blue" />
                 ) : (
-                  <div className="bg-gray-50 p-4 rounded-md text-gray-500">No analysis results available</div>
+                  <div className="bg-muted p-4 rounded-md text-muted-foreground">No analysis results available</div>
                 )}
               </div>
             )}
@@ -1039,11 +1039,11 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white to-cyan-50">
+          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-background via-background to-cyan-50/10 dark:from-background dark:via-background dark:to-cyan-700/10">
             {fileDetails.isLoading ? (
-              <div className="flex flex-col items-center justify-center py-6 bg-gray-50 rounded-lg">
+              <div className="flex flex-col items-center justify-center py-6 bg-muted rounded-lg">
                 <FileText className="h-10 w-10 text-cyan-600 animate-pulse mb-3" />
-                <p className="text-base font-medium text-gray-700 mb-2">Loading file content...</p>
+                <p className="text-base font-medium text-foreground mb-2">Loading file content...</p>
                 <div className="space-y-1 w-64">
                   <div className="h-2 bg-cyan-200 rounded animate-pulse"></div>
                   <div className="h-2 bg-cyan-300 rounded animate-pulse"></div>
@@ -1056,7 +1056,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                 <p className="text-sm mt-1">{fileDetails.error}</p>
               </div>
             ) : fileDetails.isPdf ? (
-              <div className="p-4 bg-white rounded-md flex justify-center h-full" style={{ minHeight: '400px' }}>
+              <div className="p-4 bg-card rounded-md flex justify-center h-full" style={{ minHeight: '400px' }}>
                 <iframe 
                   src={fileDetails.content}
                   title={`PDF: ${file.name}`}
@@ -1078,15 +1078,15 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                 </Button>
               </div>
             ) : fileDetails.isImage ? (
-              <div className="p-4 bg-white rounded-md flex justify-center">
+              <div className="p-4 bg-card rounded-md flex justify-center">
                 <div dangerouslySetInnerHTML={{ __html: fileDetails.content }} />
               </div>
             ) : fileDetails.isVideo ? (
-              <div className="p-4 bg-white rounded-md flex justify-center">
+              <div className="p-4 bg-card rounded-md flex justify-center">
                 <div dangerouslySetInnerHTML={{ __html: fileDetails.content }} />
               </div>
             ) : fileDetails.isAudio ? (
-              <div className="p-4 bg-white rounded-md flex flex-col items-center justify-center">
+              <div className="p-4 bg-card rounded-md flex flex-col items-center justify-center">
                 <Music className="h-12 w-12 text-green-500 mb-3" />
                 <p className="text-green-800 font-medium mb-4">Audio Player</p>
                 <div dangerouslySetInnerHTML={{ __html: fileDetails.content }} className="w-full" />
@@ -1105,8 +1105,8 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                 </Button>
               </div>
             ) : (
-              <div className="p-4 bg-white rounded-md">
-                <pre className="text-sm whitespace-pre-wrap break-words font-mono bg-gray-50 p-3 rounded border border-gray-200 max-h-[500px] overflow-auto">
+              <div className="p-4 bg-card rounded-md">
+                <pre className="text-sm whitespace-pre-wrap break-words font-mono bg-muted p-3 rounded border border-border max-h-[500px] overflow-auto">
                   {fileDetails.content}
                 </pre>
               </div>
@@ -1188,7 +1188,7 @@ function markdownToHtml(markdown) {
     .replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-100 p-1 rounded-md overflow-x-auto my-1 text-xs"><code>$1</code></pre>')
     
     // Blockquotes
-    .replace(/^>\s(.*)$/gm, '<blockquote class="border-l-2 border-gray-300 pl-2 py-0.5 italic text-gray-600 text-sm">$1</blockquote>')
+    .replace(/^>\s(.*)$/gm, '<blockquote class="border-l-2 border-border pl-2 py-0.5 italic text-muted-foreground text-sm">$1</blockquote>')
     
     // Links
     .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-blue-600 hover:underline" target="_blank" rel="noopener">$1</a>')
@@ -1199,7 +1199,7 @@ function markdownToHtml(markdown) {
       if (/^<(\/)?(h1|h2|h3|h4|h5|h6|ul|ol|li|blockquote|pre|img)/.test(m) || /^\s*$/.test(m)) {
         return m;
       }
-      return '<p class="my-1 text-gray-700 text-sm leading-snug">$2</p>';
+      return '<p class="my-1 text-foreground text-sm leading-snug">$2</p>';
     })
     
     // Remove empty paragraphs that might have been created

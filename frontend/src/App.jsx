@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import { regenerateDeviceFingerprint } from '@/lib/deviceFingerprint';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 // Add custom scrollbar styles
 const scrollbarStyles = `
@@ -20,8 +21,14 @@ const scrollbarStyles = `
     background: #cbd5e1;
     border-radius: 4px;
   }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
   ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
   }
 `;
 
@@ -563,13 +570,14 @@ function App() {
 
   return (
     <div className="relative h-[600px] w-[800px]">
-      <div className="absolute top-0 left-0 right-0 z-10 bg-white pt-4 px-4 pb-2 border-b border-gray-100 shadow-sm">
+      <div className="absolute top-0 left-0 right-0 z-10 bg-background pt-4 px-4 pb-2 border-b border-border shadow-sm">
         <div className="mb-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Smart File Organizer</h1>
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               {syncError && (
-                <div className="text-sm text-yellow-600">
+                <div className="text-sm text-yellow-600 dark:text-yellow-400">
                   {syncError}
                 </div>
               )}
@@ -599,7 +607,7 @@ function App() {
       </div>
 
       {syncError === 'Device ID conflict detected. This may occur if you\'re using multiple browsers. Try clearing local storage or device fingerprint.' && (
-        <div className="absolute top-[100px] right-0 left-0 z-10 bg-white pt-4 px-4 pb-2 border-b border-gray-100 shadow-sm">
+        <div className="absolute top-[100px] right-0 left-0 z-10 bg-background pt-4 px-4 pb-2 border-b border-border shadow-sm">
           <div className="flex items-center justify-center">
             <Button onClick={handleFixDeviceIDConflict}>
               <RefreshCw className="mr-2 h-4 w-4" />

@@ -79,8 +79,8 @@ export function ExportPreviewDialog({
               <FileText className="h-3 w-3 mr-1 text-blue-500" />
               DOCX
             </TabsTrigger>
-            <TabsTrigger value="md" className="text-xs h-full data-[state=active]:bg-gray-100 data-[state=active]:text-gray-700">
-              <FileText className="h-3 w-3 mr-1 text-gray-500" />
+            <TabsTrigger value="md" className="text-xs h-full data-[state=active]:bg-muted data-[state=active]:text-foreground">
+              <FileText className="h-3 w-3 mr-1 text-muted-foreground" />
               MD
             </TabsTrigger>
           </TabsList>
@@ -89,13 +89,13 @@ export function ExportPreviewDialog({
             {/* Format Preview Containers */}
             <TabsContent value="pdf" className="mt-0">
               <div className="flex flex-col items-center">
-                <div className="w-full max-w-sm aspect-[0.707/0.5] bg-white rounded-lg shadow-md overflow-hidden border-2 border-red-200 flex flex-col">
+                <div className="w-full max-w-sm aspect-[0.707/0.5] bg-card rounded-lg shadow-md overflow-hidden border-2 border-red-200 flex flex-col">
                   {/* PDF Preview */}
                   <div className="bg-gradient-to-r from-red-50 to-red-100 p-1.5 border-b border-red-200">
                     <h3 className="text-xs font-semibold text-red-800 truncate">{title}</h3>
                     <div className="w-full h-0.5 bg-red-300 mt-0.5 rounded-full"></div>
                   </div>
-                  <div className="flex-1 p-1.5 bg-white overflow-hidden">
+                  <div className="flex-1 p-1.5 bg-card overflow-hidden">
                     <div className="space-y-0.5">
                       {/* Simulate document content with faded lines */}
                       <div className="h-1 bg-red-100 rounded w-full"></div>
@@ -111,7 +111,7 @@ export function ExportPreviewDialog({
                     <span>PDF Format</span>
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-500 mt-0.5">
+                <p className="text-[10px] text-muted-foreground mt-0.5">
                   Professional PDF document with headings
                 </p>
               </div>
@@ -119,13 +119,13 @@ export function ExportPreviewDialog({
             
             <TabsContent value="docx" className="mt-0">
               <div className="flex flex-col items-center">
-                <div className="w-full max-w-sm aspect-[0.707/0.5] bg-white rounded-lg shadow-md overflow-hidden border-2 border-blue-200 flex flex-col">
+                <div className="w-full max-w-sm aspect-[0.707/0.5] bg-card rounded-lg shadow-md overflow-hidden border-2 border-blue-200 flex flex-col">
                   {/* Word Preview */}
                   <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-1.5 border-b border-blue-200">
                     <h3 className="text-xs font-semibold text-blue-800 truncate">{title}</h3>
                     <div className="w-full h-0.5 bg-blue-300 mt-0.5 rounded-full"></div>
                   </div>
-                  <div className="flex-1 p-1.5 bg-white overflow-hidden">
+                  <div className="flex-1 p-1.5 bg-card overflow-hidden">
                     <div className="space-y-0.5">
                       {/* Simulate document content with faded lines */}
                       <div className="h-1 bg-blue-100 rounded w-full"></div>
@@ -141,7 +141,7 @@ export function ExportPreviewDialog({
                     <span>DOCX Format</span>
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-500 mt-0.5">
+                <p className="text-[10px] text-muted-foreground mt-0.5">
                   Editable Word document
                 </p>
               </div>
@@ -149,38 +149,38 @@ export function ExportPreviewDialog({
             
             <TabsContent value="md" className="mt-0">
               <div className="flex flex-col items-center">
-                <div className="w-full max-w-sm aspect-[0.707/0.5] bg-white rounded-lg shadow-md overflow-hidden border-2 border-gray-200 flex flex-col">
+                <div className="w-full max-w-sm aspect-[0.707/0.5] bg-card rounded-lg shadow-md overflow-hidden border-2 border-red-200 flex flex-col">
                   {/* Markdown Preview */}
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-1.5 border-b border-gray-200">
-                    <h3 className="text-xs font-semibold text-gray-800 truncate">{title}</h3>
-                    <div className="w-full h-0.5 bg-gray-300 mt-0.5 rounded-full"></div>
+                  <div className="bg-gradient-to-r from-muted to-muted/80 p-1.5 border-b border-border">
+                    <h3 className="text-xs font-semibold text-foreground truncate">{title}</h3>
+                    <div className="w-full h-0.5 bg-border mt-0.5 rounded-full"></div>
                   </div>
-                  <div className="flex-1 p-1.5 bg-gray-50 overflow-hidden font-mono text-[8px]">
+                  <div className="flex-1 p-1.5 bg-card overflow-hidden font-mono text-[8px]">
                     <div className="space-y-0.5">
                       {/* Simulate markdown content */}
-                      <div className="text-gray-600">
-                        <span className="text-gray-400"># </span>Title
+                      <div className="text-foreground">
+                        <span className="text-muted-foreground"># </span>Title
                       </div>
-                      <div className="text-gray-600">
-                        <span className="text-gray-400">## </span>Section
+                      <div className="text-foreground">
+                        <span className="text-muted-foreground">## </span>Section
                       </div>
-                      <div className="text-gray-600 ml-0.5">
-                        <span className="text-gray-400">- </span>Bullet point
+                      <div className="text-foreground ml-0.5">
+                        <span className="text-muted-foreground">- </span>Bullet point
                       </div>
-                      <div className="text-gray-600 ml-0.5">
-                        <span className="text-gray-400">- </span>Another point
+                      <div className="text-foreground ml-0.5">
+                        <span className="text-muted-foreground">- </span>Another point
                       </div>
-                      <div className="text-gray-500">
+                      <div className="text-muted-foreground">
                         Regular text...
                       </div>
                     </div>
                   </div>
-                  <div className="px-1.5 py-0.5 bg-gray-100 text-[8px] text-gray-500 flex justify-between border-t border-gray-200">
+                  <div className="px-1.5 py-0.5 bg-muted text-[8px] text-muted-foreground flex justify-between border-t border-border">
                     <span>Plain text format</span>
                     <span>Markdown</span>
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-500 mt-0.5">
+                <p className="text-[10px] text-muted-foreground mt-0.5">
                   Simple text format
                 </p>
               </div>
@@ -188,10 +188,10 @@ export function ExportPreviewDialog({
             
             {/* Success overlay */}
             {exportSuccess && (
-              <div className="absolute inset-0 bg-white/90 flex items-center justify-center flex-col">
+              <div className="absolute inset-0 bg-background/90 flex items-center justify-center flex-col">
                 <CheckCircle className="h-6 w-6 text-green-500 mb-1" />
-                <p className="text-sm font-medium text-gray-800">Export Successful!</p>
-                <p className="text-[10px] text-gray-500">Document saved</p>
+                <p className="text-sm font-medium text-foreground">Export Successful!</p>
+                <p className="text-[10px] text-muted-foreground">Document saved</p>
               </div>
             )}
           </div>
