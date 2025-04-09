@@ -1,7 +1,19 @@
 import { useState, useCallback, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { File, Image, FileText, MoreVertical, FileArchive, Video, Music } from 'lucide-react';
+import { 
+  File, 
+  Image, 
+  FileText, 
+  MoreVertical, 
+  FileArchive, 
+  Video, 
+  Music,
+  BookOpen,
+  Brain,
+  FileSearch,
+  Sparkles
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,15 +30,34 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuGroup,
+  DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-export function FileCard({ file, onDelete, onRename }) {
+export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize }) {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [newFileName, setNewFileName] = useState(file.name);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [analysisDialog, setAnalysisDialog] = useState(false);
+  const [summaryDialog, setSummaryDialog] = useState(false);
+  const [analysis, setAnalysis] = useState("");
+  const [summary, setSummary] = useState("");
+  
   const menuTriggerRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Check if file is a document or PDF
+  const isDocument = file.type === 'application/pdf' || 
+                    file.type.includes('document') || 
+                    file.name.toLowerCase().endsWith('.pdf') ||
+                    file.type.includes('text') ||
+                    file.name.toLowerCase().endsWith('.txt') ||
+                    file.name.toLowerCase().endsWith('.doc') ||
+                    file.name.toLowerCase().endsWith('.docx');
 
   const handleRename = () => {
     if (newFileName.trim() && newFileName !== file.name) {
@@ -45,6 +76,70 @@ export function FileCard({ file, onDelete, onRename }) {
     setIsDropdownOpen(false); // Close dropdown before delete
     onDelete?.(file);
   }, [file, onDelete]);
+  
+  const handleAnalyze = useCallback(() => {
+    setIsDropdownOpen(false);
+    setIsAnalyzing(true);
+    setAnalysisDialog(true);
+    
+    // Simulate AI analyzing the document
+    setTimeout(() => {
+      const result = `# AI Analysis of ${file.name}
+
+## Document Structure
+- The document contains approximately 8 pages
+- Contains 3 main sections with 12 subsections
+- Includes 4 tables and 2 charts
+
+## Key Entities Detected
+- Companies: Acme Corp, TechSolutions Inc.
+- Locations: New York, London, Tokyo
+- People: John Smith, Maria Rodriguez, Akira Tanaka
+- Dates: March 15, 2023, Q4 2022, January 2023
+
+## Topics Identified
+1. Financial performance analysis (45% of content)
+2. Market trend evaluation (30% of content)
+3. Strategic recommendations (25% of content)
+
+## Sentiment Analysis
+Overall sentiment: Positive (72%)
+Key areas of concern: Supply chain disruptions, market volatility
+
+## Action Items Detected
+- Review Q1 budget allocations by April 30th
+- Schedule stakeholder meeting for project approval
+- Finalize partner agreements before end of quarter`;
+      
+      setAnalysis(result);
+      setIsAnalyzing(false);
+    }, 3000);
+  }, [file]);
+  
+  const handleSummarize = useCallback(() => {
+    setIsDropdownOpen(false);
+    setIsSummarizing(true);
+    setSummaryDialog(true);
+    
+    // Simulate AI summarizing the document
+    setTimeout(() => {
+      const result = `# Executive Summary: ${file.name.split('.')[0]}
+
+This document provides a comprehensive analysis of Q1 2023 financial results and market positioning. The company reported a 15% year-over-year revenue growth, exceeding market expectations by 3.2 percentage points. Profit margins improved to a 28% high, supported by strategic cost-saving initiatives implemented over the past two quarters.
+
+Key highlights include:
+
+- Expansion into three new markets (Singapore, Brazil, and Germany) with positive initial customer acquisition rates
+- Launch of two new product lines, contributing 12% to total quarterly revenue
+- Strategic partnership with TechSolutions Inc. that grants access to their client base of over 5,000 enterprise customers
+- Identified challenges in supply chain management that require priority attention
+
+The document recommends focusing on scaling the Singapore market presence in Q2 while addressing the supply chain vulnerabilities through diversification of vendor relationships. Additionally, it suggests allocating 18% of the R&D budget toward enhancing the newest product line based on positive customer feedback and adoption rates.`;
+      
+      setSummary(result);
+      setIsSummarizing(false);
+    }, 3000);
+  }, [file]);
 
   const getFileIcon = (type) => {
     if (type.startsWith('image/')) return <Image className="h-8 w-8 text-blue-500" />;
@@ -137,6 +232,29 @@ export function FileCard({ file, onDelete, onRename }) {
                   <DropdownMenuItem onSelect={openRenameDialog} className="gap-2">
                     <span className="text-sm">Rename</span>
                   </DropdownMenuItem>
+                  
+                  {isDocument && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-gray-500">AI Tools</DropdownMenuLabel>
+                      <DropdownMenuItem 
+                        onSelect={handleAnalyze}
+                        className="gap-2 text-blue-600"
+                      >
+                        <FileSearch className="h-4 w-4" />
+                        <span className="text-sm">Analyze with AI</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onSelect={handleSummarize}
+                        className="gap-2 text-purple-600"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        <span className="text-sm">Summarize with AI</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  
                   <DropdownMenuItem 
                     onSelect={handleDelete}
                     className="text-red-500 gap-2"
@@ -160,6 +278,7 @@ export function FileCard({ file, onDelete, onRename }) {
         )}
       </Card>
 
+      {/* Rename Dialog */}
       <Dialog 
         open={isRenameDialogOpen} 
         onOpenChange={setIsRenameDialogOpen}
@@ -204,6 +323,122 @@ export function FileCard({ file, onDelete, onRename }) {
             >
               Rename
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Analysis Dialog */}
+      <Dialog open={analysisDialog} onOpenChange={setAnalysisDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSearch className="h-5 w-5 text-blue-600" />
+              AI Analysis: {truncateFilename(file.name, 30)}
+            </DialogTitle>
+            <DialogDescription>
+              Detailed AI-powered analysis of your document
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {isAnalyzing ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <Brain className="h-12 w-12 text-blue-600 animate-pulse mb-4" />
+                <p className="text-sm text-muted-foreground mb-2">AI is analyzing your document...</p>
+                <p className="text-xs text-muted-foreground">Identifying key topics, entities, and insights</p>
+              </div>
+            ) : (
+              <div className="prose prose-sm max-w-none">
+                <pre className="text-sm whitespace-pre-wrap font-sans bg-gray-50 p-4 rounded-md overflow-auto">
+                  {analysis}
+                </pre>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => setAnalysisDialog(false)}
+            >
+              Close
+            </Button>
+            {!isAnalyzing && (
+              <Button 
+                type="button"
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => {
+                  // Here you would implement the save or export functionality
+                  const blob = new Blob([analysis], { type: 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${file.name.split('.')[0]}-analysis.md`;
+                  a.click();
+                }}
+              >
+                Save Analysis
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Summary Dialog */}
+      <Dialog open={summaryDialog} onOpenChange={setSummaryDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              AI Summary: {truncateFilename(file.name, 30)}
+            </DialogTitle>
+            <DialogDescription>
+              Concise AI-generated summary of your document
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {isSummarizing ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <BookOpen className="h-12 w-12 text-purple-600 animate-pulse mb-4" />
+                <p className="text-sm text-muted-foreground mb-2">AI is summarizing your document...</p>
+                <p className="text-xs text-muted-foreground">Creating a concise overview of key points</p>
+              </div>
+            ) : (
+              <div className="prose prose-sm max-w-none">
+                <pre className="text-sm whitespace-pre-wrap font-sans bg-gray-50 p-4 rounded-md overflow-auto">
+                  {summary}
+                </pre>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => setSummaryDialog(false)}
+            >
+              Close
+            </Button>
+            {!isSummarizing && (
+              <Button 
+                type="button"
+                className="bg-purple-600 hover:bg-purple-700"
+                onClick={() => {
+                  // Here you would implement the save or export functionality
+                  const blob = new Blob([summary], { type: 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${file.name.split('.')[0]}-summary.md`;
+                  a.click();
+                }}
+              >
+                Save Summary
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -233,6 +233,82 @@ function App() {
       );
     }
   };
+  
+  const handleAnalyze = async (file) => {
+    try {
+      // In a real app, you would call your AI service here
+      console.log('Analyzing file:', file.name);
+      
+      // Example of updating file metadata to show analysis was performed
+      const updatedFile = await api.updateFile(file, { 
+        status: 'analyzed',
+        lastAnalyzed: new Date().toISOString()
+      });
+      
+      // Update state with analysis info
+      setFiles(currentFiles => 
+        currentFiles.map(f => f.fileId === file.fileId ? { 
+          ...f, 
+          status: 'analyzed',
+          lastAnalyzed: new Date().toISOString()
+        } : f)
+      );
+      
+      // Update local storage
+      chrome.storage.local.get(['files'], function(result) {
+        const updatedFiles = (result.files || []).map(f => 
+          f.fileId === file.fileId ? { 
+            ...f, 
+            status: 'analyzed',
+            lastAnalyzed: new Date().toISOString()
+          } : f
+        );
+        chrome.storage.local.set({ files: updatedFiles });
+      });
+      
+    } catch (error) {
+      console.error('Error analyzing file:', error);
+      setSyncError('Failed to analyze file');
+    }
+  };
+  
+  const handleSummarize = async (file) => {
+    try {
+      // In a real app, you would call your AI service here
+      console.log('Summarizing file:', file.name);
+      
+      // Example of updating file metadata to show summary was performed
+      const updatedFile = await api.updateFile(file, { 
+        status: 'summarized',
+        lastSummarized: new Date().toISOString()
+      });
+      
+      // Update state with summary info
+      setFiles(currentFiles => 
+        currentFiles.map(f => f.fileId === file.fileId ? { 
+          ...f, 
+          status: 'summarized',
+          lastSummarized: new Date().toISOString()
+        } : f)
+      );
+      
+      // Update local storage
+      chrome.storage.local.get(['files'], function(result) {
+        const updatedFiles = (result.files || []).map(f => 
+          f.fileId === file.fileId ? { 
+            ...f, 
+            status: 'summarized',
+            lastSummarized: new Date().toISOString()
+          } : f
+        );
+        chrome.storage.local.set({ files: updatedFiles });
+      });
+      
+    } catch (error) {
+      console.error('Error summarizing file:', error);
+      setSyncError('Failed to summarize file');
+    }
+  };
 
   const filteredFiles = files.filter(file => {
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -292,6 +368,8 @@ function App() {
           files={filteredFiles}
           onDelete={handleDelete}
           onRename={handleRename}
+          onAnalyze={handleAnalyze}
+          onSummarize={handleSummarize}
         />
       </div>
     </div>
