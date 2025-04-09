@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { FileUpload } from '@/components/features/FileUpload';
 import { FileGrid } from '@/components/features/FileGrid';
 import { SearchBar } from '@/components/features/SearchBar';
+import { FoldersList } from '@/components/features/FoldersList';
+import { MoveFileDialog } from '@/components/features/MoveFileDialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, FolderIcon, MoveIcon } from 'lucide-react';
 import { api } from '@/lib/api';
 import { regenerateDeviceFingerprint } from '@/lib/deviceFingerprint';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -34,40 +36,56 @@ const scrollbarStyles = `
 
 function App() {
   const [files, setFiles] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [currentFolderId, setCurrentFolderId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [syncError, setSyncError] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
 
-  // Load files from server and keep local storage in sync
+  // Load files and folders from server
   useEffect(() => {
-    const loadFiles = async () => {
+    const loadData = async () => {
       try {
-        // Get files from server
-        const serverFiles = await api.getFiles();
+        setIsLoading(true);
         
-        // Update local storage
-        await chrome.storage.local.set({ files: serverFiles });
+        // Get files from server - filtered by current folder
+        const serverFiles = await api.getFiles(currentFolderId);
+        
+        // Get folders from server
+        const serverFolders = await api.getFolders();
+        
+        // Update local storage and state
+        await chrome.storage.local.set({ 
+          files: serverFiles,
+          folders: serverFolders
+        });
+        
         setFiles(serverFiles);
+        setFolders(serverFolders);
+        setSyncError(null);
       } catch (error) {
-        console.error('Error loading files:', error);
+        console.error('Error loading data:', error);
         
         // Set a more specific error message if it's a MongoDB duplicate key error
         const errorMessage = error.message.includes('duplicate key error')
           ? 'Device ID conflict detected. This may occur if you\'re using multiple browsers. Try clearing your browser data.'
-          : 'Failed to load files from server';
+          : 'Failed to load data from server';
           
         setSyncError(errorMessage);
         
         // Fallback to local storage
-        const { files: localFiles } = await chrome.storage.local.get(['files']);
+        const { files: localFiles, folders: localFolders } = await chrome.storage.local.get(['files', 'folders']);
         setFiles(localFiles || []);
+        setFolders(localFolders || []);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadFiles();
+    loadData();
 
     // Add scrollbar styles
     const style = document.createElement('style');
@@ -82,26 +100,15 @@ function App() {
         // Only update state if files have actually changed
         if (JSON.stringify(newFiles) !== JSON.stringify(files)) {
           setFiles(newFiles);
-          
-          // Sync with server
-          try {
-            const serverFiles = await api.syncFiles(newFiles);
-            // Only update state if server response is different
-            if (JSON.stringify(serverFiles) !== JSON.stringify(newFiles)) {
-              setFiles(serverFiles);
-            }
-            setSyncError(null);
-          } catch (error) {
-            console.error('Error syncing with server:', error);
-            
-            // Set a more specific error message if it's a MongoDB duplicate key error
-            if (error.message.includes('duplicate key error') || 
-                (typeof error === 'object' && error.code === 11000)) {
-              setSyncError('Device ID conflict detected. This may occur if you\'re using multiple browsers. Try clearing local storage or device fingerprint.');
-            } else {
-              setSyncError('Changes will be synced when connection is restored');
-            }
-          }
+        }
+      }
+      
+      if (changes.folders) {
+        const newFolders = changes.folders.newValue || [];
+        
+        // Only update state if folders have actually changed
+        if (JSON.stringify(newFolders) !== JSON.stringify(folders)) {
+          setFolders(newFolders);
         }
       }
     };
@@ -122,7 +129,7 @@ function App() {
       chrome.runtime.onMessage.removeListener(handleMessage);
       document.head.removeChild(style);
     };
-  }, []);
+  }, [currentFolderId]); // Re-fetch when folder changes
 
   const handleFilesSelected = async (newFiles) => {
     setIsLoading(true);
@@ -537,6 +544,133 @@ function App() {
     }
   };
 
+  // Handle folder selection
+  const handleFolderSelect = async (folderId) => {
+    setCurrentFolderId(folderId);
+    setSelectedFiles([]); // Clear selections when changing folders
+  };
+  
+  // Create a new folder
+  const handleCreateFolder = async (name, parentId = null) => {
+    try {
+      setIsLoading(true);
+      const updatedFolders = await api.createFolder(name, parentId);
+      setFolders(updatedFolders);
+      
+      // Update local storage
+      await chrome.storage.local.set({ folders: updatedFolders });
+      
+      setSyncError(null);
+      return updatedFolders;
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      setSyncError('Failed to create folder');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Rename a folder
+  const handleRenameFolder = async (folderId, newName) => {
+    try {
+      setIsLoading(true);
+      const updatedFolders = await api.updateFolder(folderId, { name: newName });
+      setFolders(updatedFolders);
+      
+      // Update local storage
+      await chrome.storage.local.set({ folders: updatedFolders });
+      
+      setSyncError(null);
+      return updatedFolders;
+    } catch (error) {
+      console.error('Error renaming folder:', error);
+      setSyncError('Failed to rename folder');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Delete a folder
+  const handleDeleteFolder = async (folderId) => {
+    try {
+      setIsLoading(true);
+      const updatedFolders = await api.deleteFolder(folderId);
+      setFolders(updatedFolders);
+      
+      // If we're currently in that folder, go back to root
+      if (currentFolderId === folderId) {
+        setCurrentFolderId(null);
+      }
+      
+      // Update local storage
+      await chrome.storage.local.set({ folders: updatedFolders });
+      
+      // Refresh files if we were in the deleted folder
+      if (currentFolderId === folderId) {
+        const updatedFiles = await api.getFiles(null);
+        setFiles(updatedFiles);
+        await chrome.storage.local.set({ files: updatedFiles });
+      }
+      
+      setSyncError(null);
+      return updatedFolders;
+    } catch (error) {
+      console.error('Error deleting folder:', error);
+      setSyncError('Failed to delete folder');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Open the move dialog for selected files
+  const handleOpenMoveDialog = () => {
+    if (selectedFiles.length > 0) {
+      setIsMoveDialogOpen(true);
+    }
+  };
+  
+  // Move files to a folder
+  const handleMoveFiles = async (fileIds, targetFolderId) => {
+    try {
+      setIsLoading(true);
+      const updatedFiles = await api.moveFilesToFolder(fileIds, targetFolderId);
+      
+      // Refresh file list after move
+      const newFiles = await api.getFiles(currentFolderId);
+      setFiles(newFiles);
+      
+      // Update local storage
+      await chrome.storage.local.set({ files: newFiles });
+      
+      // Clear selections after move
+      setSelectedFiles([]);
+      
+      setSyncError(null);
+    } catch (error) {
+      console.error('Error moving files:', error);
+      setSyncError('Failed to move files');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Toggle file selection
+  const handleToggleFileSelection = (file) => {
+    setSelectedFiles(prev => {
+      const isSelected = prev.some(f => f.fileId === file.fileId);
+      
+      if (isSelected) {
+        return prev.filter(f => f.fileId !== file.fileId);
+      } else {
+        return [...prev, file];
+      }
+    });
+  };
+
+  // Filter files for the current view
   const filteredFiles = files.filter(file => {
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
     
@@ -572,6 +706,11 @@ function App() {
     return matchesSearch && matchesFilter;
   });
 
+  // Get current folder name
+  const currentFolderName = currentFolderId 
+    ? folders.find(f => f.folderId === currentFolderId)?.name || 'Unknown Folder'
+    : 'Home';
+
   return (
     <div className="relative h-[600px] w-[800px]">
       <div className="absolute top-0 left-0 right-0 z-10 bg-background pt-4 px-4 pb-2 border-b border-border shadow-sm">
@@ -598,17 +737,68 @@ function App() {
         </div>
       </div>
 
-      <div className="absolute top-[220px] bottom-0 left-0 right-0 overflow-y-auto px-4 pb-4">
-        <FileGrid
-          files={filteredFiles}
-          onDelete={handleDelete}
-          onRename={handleRename}
-          onAnalyze={handleAnalyze}
-          onSummarize={handleSummarize}
-          onDownload={handleDownload}
-          isLoading={isLoading}
-        />
+      <div className="absolute top-[220px] bottom-0 left-0 right-0 overflow-hidden">
+        <div className="flex h-full">
+          {/* Folders sidebar */}
+          <div className="w-[220px] h-full p-4 border-r border-border overflow-y-auto">
+            <FoldersList 
+              folders={folders}
+              currentFolderId={currentFolderId}
+              onFolderSelect={handleFolderSelect}
+              onCreateFolder={handleCreateFolder}
+              onRenameFolder={handleRenameFolder}
+              onDeleteFolder={handleDeleteFolder}
+            />
+          </div>
+          
+          {/* Files area */}
+          <div className="flex-1 h-full flex flex-col">
+            {/* Current folder header */}
+            <div className="p-3 border-b border-border flex items-center justify-between">
+              <div className="flex items-center">
+                <FolderIcon className="h-4 w-4 mr-2 text-blue-500" />
+                <span className="font-medium">{currentFolderName}</span>
+              </div>
+              
+              {selectedFiles.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex items-center gap-1"
+                  onClick={handleOpenMoveDialog}
+                >
+                  <MoveIcon className="h-3 w-3" />
+                  Move {selectedFiles.length > 1 ? `${selectedFiles.length} files` : '1 file'}
+                </Button>
+              )}
+            </div>
+            
+            {/* Files grid */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <FileGrid
+                files={filteredFiles}
+                selectedFiles={selectedFiles}
+                onToggleSelect={handleToggleFileSelection}
+                onDelete={handleDelete}
+                onRename={handleRename}
+                onAnalyze={handleAnalyze}
+                onSummarize={handleSummarize}
+                onDownload={handleDownload}
+                isLoading={isLoading}
+              />
+            </div>
+          </div>
+        </div>
       </div>
+      
+      {/* Move files dialog */}
+      <MoveFileDialog
+        isOpen={isMoveDialogOpen}
+        onClose={() => setIsMoveDialogOpen(false)}
+        folders={folders}
+        selectedFiles={selectedFiles}
+        onMoveFiles={handleMoveFiles}
+      />
 
       {syncError === 'Device ID conflict detected. This may occur if you\'re using multiple browsers. Try clearing local storage or device fingerprint.' && (
         <div className="absolute top-[100px] right-0 left-0 z-10 bg-background pt-4 px-4 pb-2 border-b border-border shadow-sm">

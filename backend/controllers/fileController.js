@@ -1,5 +1,6 @@
 import { Device } from '../models/Device.js';
 import { File } from '../models/File.js';
+import { Folder } from '../models/Folder.js';
 import { encryptContent, decryptContent } from '../utils/encryption.js';
 import { analyzeWithHuggingFace, analyzeWithGemini, summarizeWithGemini } from '../utils/aiService.js';
 
@@ -20,6 +21,14 @@ const getOrCreateDevice = async (deviceId, deviceInfo) => {
   }
   
   return device;
+};
+
+// Helper function to get folder path
+const getFolderPath = async (deviceId, folderId) => {
+  if (!folderId) return '/';
+  
+  const folder = await Folder.findOne({ deviceId, folderId });
+  return folder ? folder.path : '/';
 };
 
 export const fileController = {
@@ -83,6 +92,9 @@ export const fileController = {
           }
         }
         
+        // Get the folder path if file has a folderId
+        const folderPath = await getFolderPath(deviceId, file.folderId);
+        
         return File.findOneAndUpdate(
           { deviceId, fileId: file.fileId },
           {
@@ -98,6 +110,8 @@ export const fileController = {
             lastModified: new Date(),
             fileExtension,
             category,
+            folderId: file.folderId || null,
+            folderPath,
             ...(encryptedContent && { content: encryptedContent })
           },
           { upsert: true, new: true }
@@ -120,6 +134,7 @@ export const fileController = {
   getFiles: async (req, res) => {
     try {
       const deviceId = req.headers['x-device-id'];
+      const { folderId = null } = req.query;
 
       if (!deviceId) {
         return res.status(400).json({ error: 'Device ID is required' });
@@ -131,7 +146,19 @@ export const fileController = {
         { lastSeen: new Date() }
       );
 
-      const files = await File.find({ deviceId });
+      // Get files based on folder
+      let files;
+      if (folderId === 'null' || folderId === 'undefined' || folderId === '') {
+        // Get root files (no folder)
+        files = await File.find({ deviceId, folderId: null });
+      } else if (folderId) {
+        // Get files in a specific folder
+        files = await File.find({ deviceId, folderId });
+      } else {
+        // Get all files regardless of folder
+        files = await File.find({ deviceId });
+      }
+
       res.json(files);
     } catch (error) {
       console.error('Error getting files:', error);
@@ -163,12 +190,19 @@ export const fileController = {
         }
       }
 
+      // Update folder path if folderId is being updated
+      let folderPath = undefined;
+      if (updates.folderId !== undefined) {
+        folderPath = await getFolderPath(deviceId, updates.folderId);
+      }
+
       // Find the specific file by both deviceId and fileId
       const file = await File.findOneAndUpdate(
         { deviceId, fileId },
         { 
           $set: {
             ...updates,
+            ...(folderPath !== undefined && { folderPath }),
             ...(encryptedContent && { content: encryptedContent }),
             lastModified: new Date()
           }
@@ -217,7 +251,9 @@ export const fileController = {
           fileId: file.fileId,
           name: file.name,
           type: file.type,
-          content: decryptedContent
+          content: decryptedContent,
+          folderId: file.folderId,
+          folderPath: file.folderPath
         });
       } catch (error) {
         console.error(`Error decrypting content for file ${fileId}:`, error);
@@ -327,7 +363,9 @@ export const fileController = {
             type: 'summary',
             status: 'analyzed',
             gemini: geminiResults,
-            summary: summary
+            summary: summary,
+            folderId: file.folderId,
+            folderPath: file.folderPath
           });
         } catch (error) {
           console.error('Error generating summary:', error);
@@ -428,7 +466,9 @@ export const fileController = {
           status: 'analyzed',
           huggingface: hfResults,
           gemini: geminiResults,
-          summary: summary
+          summary: summary,
+          folderId: file.folderId,
+          folderPath: file.folderPath
         });
       } catch (error) {
         console.error('Error in analysis process:', error);
@@ -493,7 +533,9 @@ export const fileController = {
         fileId,
         status: file.status,
         analysis: file.analysis || {},
-        summary: file.summary || {}
+        summary: file.summary || {},
+        folderId: file.folderId,
+        folderPath: file.folderPath
       });
     } catch (error) {
       console.error('Error getting file analysis:', error);

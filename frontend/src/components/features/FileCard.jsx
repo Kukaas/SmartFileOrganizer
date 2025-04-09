@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   File, 
   Image, 
@@ -160,7 +161,16 @@ function ContentDisplay({ content, color = "purple" }) {
   );
 }
 
-export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onDownload }) {
+export function FileCard({ 
+  file, 
+  isSelected = false,
+  onToggleSelect,
+  onDelete, 
+  onRename, 
+  onAnalyze, 
+  onSummarize, 
+  onDownload 
+}) {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [newFileName, setNewFileName] = useState(file.name);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -656,26 +666,23 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
     setIsExportDialogOpen(true);
   };
 
-  const getFileIcon = (type) => {
-    // Extract file extension from name
-    const fileExtension = file.name.split('.').pop().toLowerCase();
-    
+  const getFileIcon = (type, extension) => {
     // Check type and extension to determine the appropriate icon
     if (type.startsWith('image/')) return <Image className="h-8 w-8 text-blue-500" />;
     if (type === 'application/pdf') return <FileText className="h-8 w-8 text-red-500" />;
     if (type.startsWith('video/')) return <Video className="h-8 w-8 text-purple-500" />;
     if (type.startsWith('audio/')) return <Music className="h-8 w-8 text-green-500" />;
     if (type.includes('zip') || type.includes('archive') || type.includes('compressed') || 
-        ['zip', 'rar', 'tar', 'gz', '7z'].includes(fileExtension)) 
+        ['zip', 'rar', 'tar', 'gz', '7z'].includes(extension)) 
       return <FileArchive className="h-8 w-8 text-amber-500" />;
         
     // Code file icons
-    if (['js', 'py', 'java', 'c', 'cpp', 'cs', 'php', 'rb', 'html', 'css', 'ts', 'jsx', 'tsx'].includes(fileExtension)) {
+    if (['js', 'py', 'java', 'c', 'cpp', 'cs', 'php', 'rb', 'html', 'css', 'ts', 'jsx', 'tsx'].includes(extension)) {
       return <File className="h-8 w-8 text-emerald-500" />;
     }
     
     // Document icons
-    if (['doc', 'docx', 'txt', 'md', 'rtf'].includes(fileExtension)) {
+    if (['doc', 'docx', 'txt', 'md', 'rtf'].includes(extension)) {
       return <FileText className="h-8 w-8 text-blue-500" />;
     }
     
@@ -710,57 +717,43 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
     return `${nameWithoutExt.substring(0, maxLength)}...${extension ? `.${extension}` : ''}`;
   };
 
+  const handleToggleSelect = () => {
+    if (onToggleSelect) {
+      onToggleSelect(file);
+    }
+  };
+
   return (
-    <>
-      <Card className="p-3 hover:shadow-md transition-shadow bg-gradient-to-br from-background to-muted border-border h-full flex flex-col relative">
-        {isDeleting && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-md z-10">
-            <Trash2 className="h-8 w-8 text-red-500 animate-pulse mb-2" />
-            <p className="text-sm font-medium text-red-600">Deleting...</p>
+    <Card className={`overflow-hidden ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`}>
+      <div className="flex justify-between items-start p-3 border-b border-border bg-card-header">
+        <div className="flex items-center flex-1 min-w-0 mr-2">
+          {onToggleSelect && (
+            <div className="mr-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={handleToggleSelect}
+                aria-label="Select file"
+              />
           </div>
         )}
-        {isDownloading && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-md z-10">
-            <Download className="h-8 w-8 text-green-500 animate-pulse mb-2" />
-            <p className="text-sm font-medium text-green-600">Downloading...</p>
+          <div className="flex items-center truncate min-w-0 flex-1" onClick={handleToggleSelect}>
+            <div className="flex-shrink-0 mr-2">
+              {getFileIcon(file.type, fileExtension)}
           </div>
-        )}
-        {isRenaming && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-md z-10">
-            <Pencil className="h-8 w-8 text-blue-500 animate-pulse mb-2" />
-            <p className="text-sm font-medium text-blue-600">Renaming...</p>
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-sm truncate">
+                {truncateFilename(file.name, 25)}
           </div>
-        )}
-        <div className="flex items-start justify-between gap-1">
-          <div className="flex items-start gap-2 min-w-0 flex-1">
-            <div className="p-1.5 bg-background rounded-md shadow-sm flex items-center justify-center shrink-0">
-              {getFileIcon(file.type)}
-            </div>
-            <div className="space-y-0.5 overflow-hidden min-w-0">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <p className="font-medium leading-tight truncate" title={file.name}>
-                      {truncateFilename(file.name)}
-                    </p>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{file.name}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground flex items-center space-x-1 truncate">
                 <span>{formatFileSize(file.size)}</span>
-                {file.dateAdded && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                <span>•</span>
                     <span>{formatDate(file.dateAdded)}</span>
-                  </>
-                )}
               </div>
             </div>
           </div>
-          <div className="shrink-0">
+        </div>
+
+        <div className="flex-shrink-0">
             <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
               <DropdownMenuTrigger asChild>
                 <button
@@ -859,7 +852,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
         </div>
 
         {file.tags && file.tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
+          <div className="px-3 pb-3 pt-1 flex flex-wrap gap-1">
             {file.tags.map((tag, index) => (
               <Badge key={index} variant="secondary" className="text-xs px-2 py-0.5 bg-muted text-muted-foreground hover:bg-muted/80">
                 {tag}
@@ -867,7 +860,6 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             ))}
           </div>
         )}
-      </Card>
 
       {/* Rename Dialog */}
       <Dialog 
@@ -1171,7 +1163,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </Card>
   );
 }
 

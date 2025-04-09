@@ -75,8 +75,9 @@ export const api = {
   },
 
   // Get files for the current device
-  getFiles: async () => {
-    return apiCall('/files');
+  getFiles: async (folderId = null) => {
+    const queryParams = folderId !== null ? `?folderId=${folderId}` : '';
+    return apiCall(`/files${queryParams}`);
   },
 
   // Update file metadata (tags, name, etc.)
@@ -108,6 +109,17 @@ export const api = {
     });
 
     return response;
+  },
+
+  // Move file to a folder
+  moveFilesToFolder: async (fileIds, targetFolderId = null) => {
+    return apiCall('/files/move-files', {
+      method: 'POST',
+      body: JSON.stringify({
+        fileIds: Array.isArray(fileIds) ? fileIds : [fileIds],
+        targetFolderId
+      }),
+    });
   },
 
   // Download a file
@@ -193,4 +205,45 @@ export const api = {
   getDeviceInfo: async () => {
     return apiCall('/device/info');
   },
+  
+  // FOLDER OPERATIONS
+  
+  // Get all folders
+  getFolders: async () => {
+    return apiCall('/files/folders');
+  },
+  
+  // Create a new folder
+  createFolder: async (name, parentId = null) => {
+    return apiCall('/files/folders', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        parentId
+      }),
+    });
+  },
+  
+  // Update a folder
+  updateFolder: async (folderId, updates) => {
+    if (!folderId) {
+      throw new Error('Invalid folder: missing folderId');
+    }
+    
+    return apiCall(`/files/folders/${folderId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  },
+  
+  // Delete a folder
+  deleteFolder: async (folderId) => {
+    if (!folderId) {
+      throw new Error('Invalid folder: missing folderId');
+    }
+    
+    return apiCall(`/files/folders/${folderId}`, {
+      method: 'DELETE',
+    });
+  }
 }; 

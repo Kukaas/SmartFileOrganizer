@@ -14,6 +14,15 @@ const fileSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  folderId: {
+    type: String,
+    default: null,
+    index: true
+  },
+  folderPath: {
+    type: String,
+    default: '/'
+  },
   type: String,
   size: Number,
   url: String,

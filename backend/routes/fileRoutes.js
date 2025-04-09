@@ -1,6 +1,7 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import { fileController } from '../controllers/fileController.js';
+import { folderController } from '../controllers/folderController.js';
 
 const router = express.Router();
 
@@ -84,6 +85,13 @@ router.delete('/:fileId', fileController.deleteFile);
 router.get('/:fileId/download', fileController.downloadFile);
 router.post('/:fileId/analyze', jsonParser, fileController.analyzeFile);
 router.get('/:fileId/analysis', fileController.getFileAnalysis);
+
+// Folder routes
+router.get('/folders', folderController.getFolders);
+router.post('/folders', jsonParser, folderController.createFolder);
+router.patch('/folders/:folderId', jsonParser, folderController.updateFolder);
+router.delete('/folders/:folderId', folderController.deleteFolder);
+router.post('/move-files', jsonParser, folderController.moveFiles);
 
 // Device routes
 router.get('/device/info', fileController.getDeviceInfo);

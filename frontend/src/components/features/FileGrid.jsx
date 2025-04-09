@@ -2,7 +2,17 @@ import { FileCard } from './FileCard';
 import { motion } from 'framer-motion';
 import { Loader2, FileX } from 'lucide-react';
 
-export function FileGrid({ files, onDelete, onRename, onAnalyze, onSummarize, onDownload, isLoading }) {
+export function FileGrid({ 
+  files, 
+  selectedFiles = [], 
+  onToggleSelect,
+  onDelete, 
+  onRename, 
+  onAnalyze, 
+  onSummarize, 
+  onDownload, 
+  isLoading 
+}) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-12 gap-4">
@@ -30,19 +40,25 @@ export function FileGrid({ files, onDelete, onRename, onAnalyze, onSummarize, on
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4">
-      {files.map((file) => (
-        <div key={file.id} className="col-span-12 sm:col-span-6 md:col-span-4">
-          <FileCard 
-            file={file} 
-            onDelete={onDelete}
-            onRename={onRename}
-            onAnalyze={onAnalyze}
-            onSummarize={onSummarize}
-            onDownload={onDownload}
-          />
-        </div>
-      ))}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {files.map((file) => {
+        const isSelected = selectedFiles.some(f => f.fileId === file.fileId);
+        
+        return (
+          <div key={file.fileId || file.id}>
+            <FileCard 
+              file={file} 
+              isSelected={isSelected}
+              onToggleSelect={onToggleSelect}
+              onDelete={onDelete}
+              onRename={onRename}
+              onAnalyze={onAnalyze}
+              onSummarize={onSummarize}
+              onDownload={onDownload}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 } 
