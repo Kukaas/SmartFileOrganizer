@@ -40,7 +40,6 @@ import {
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { exportToPDF, exportToDOCX } from '@/utils/documentExporter';
 import { ExportPreviewDialog } from './ExportPreviewDialog';
 import { api } from '@/lib/api';
 
@@ -488,35 +487,9 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
         // Format the results for display
         let formattedAnalysis = '';
 
-        // Format Hugging Face results
-        if (result.huggingface && !result.huggingface.error) {
-          formattedAnalysis += `# Hugging Face Analysis\n\n`;
-          
-          if (result.huggingface.analysisType === 'image-classification') {
-            formattedAnalysis += `## Image Classification\n\n`;
-            const classifications = result.huggingface.results || [];
-            classifications.forEach((item, i) => {
-              formattedAnalysis += `- ${item.label}: ${(item.score * 100).toFixed(2)}%\n`;
-            });
-          } else {
-            formattedAnalysis += `## Text Analysis\n\n`;
-            const classifications = Array.isArray(result.huggingface.results) 
-              ? result.huggingface.results 
-              : [result.huggingface.results];
-              
-            classifications.forEach((item, i) => {
-              if (item.label) {
-                formattedAnalysis += `- ${item.label}: ${(item.score * 100).toFixed(2)}%\n`;
-              }
-            });
-          }
-          
-          formattedAnalysis += `\n`;
-        }
-
         // Format Gemini results - updated for gemini-2.0-flash format
         if (result.gemini && !result.gemini.error) {
-          formattedAnalysis += `# Gemini Analysis\n\n`;
+          formattedAnalysis += `# AI Analysis\n\n`;
           
           try {
             // The new model response format might be different
@@ -545,29 +518,15 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
               formattedAnalysis += `Raw response: ${JSON.stringify(geminiResults, null, 2)}`;
             }
           } catch (error) {
-            formattedAnalysis += `Error parsing Gemini results: ${error.message}\n`;
+            formattedAnalysis += `Error parsing results: ${error.message}\n`;
             formattedAnalysis += `Raw response: ${JSON.stringify(result.gemini.results, null, 2)}\n`;
           }
         }
 
         // Handle errors
-        if ((result.huggingface && result.huggingface.error) || (result.gemini && result.gemini.error)) {
+        if (result.gemini && result.gemini.error) {
           formattedAnalysis += `\n\n## Analysis Errors\n\n`;
-          
-          if (result.huggingface && result.huggingface.error) {
-            const huggingFaceError = result.huggingface.error;
-            
-            // Check for the specific "candidate_labels" error
-            if (huggingFaceError.includes('Error in `parameters.candidate_labels`')) {
-              formattedAnalysis += `- Hugging Face: This file type is not supported for text classification. Try a text document instead.\n`;
-            } else {
-              formattedAnalysis += `- Hugging Face: ${huggingFaceError}\n`;
-            }
-          }
-          
-          if (result.gemini && result.gemini.error) {
-            formattedAnalysis += `- Gemini: ${result.gemini.error}\n`;
-          }
+          formattedAnalysis += `- ${result.gemini.error}\n`;
         }
         
         // Perform aggressive cleaning of the analysis
@@ -592,11 +551,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
         // More user-friendly error message
         let errorMessage = 'Failed to analyze file';
         
-        if (error.message && error.message.includes('Error in `parameters.candidate_labels`')) {
-          errorMessage = 'Analysis Error: The document format needs special processing. We\'ve updated our system to better handle this file type. Please try analyzing again.';
-        } else if (error.message && error.message.includes('Hugging Face API error')) {
-          errorMessage = 'Analysis Error: There was an issue with the AI service. The document will be processed with our backup AI system instead.';
-        } else if (error.message && error.message.includes('Unsupported file type')) {
+        if (error.message && error.message.includes('Unsupported file type')) {
           const fileExt = file.name.split('.').pop().toLowerCase();
           errorMessage = `Analysis Error: This file type (${fileExt}) is not fully supported. We recommend using PDF, DOCX, or TXT files for best results.`;
         } else if (error.message && error.message.includes('Unable to extract text')) {
