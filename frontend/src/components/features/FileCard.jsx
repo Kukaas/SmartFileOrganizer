@@ -336,6 +336,14 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                   error: null,
                   isVideo: true
                 });
+              } else if (file.type.startsWith('audio/')) {
+                // For audio files, display an audio player
+                setFileDetails({
+                  content: `<audio src="${URL.createObjectURL(result.blob)}" controls class="w-full">Your browser does not support the audio tag.</audio>`,
+                  isLoading: false,
+                  error: null,
+                  isAudio: true
+                });
               } else if (file.type.includes('zip') || file.type.includes('archive') || file.type.includes('compressed') || 
                         ['zip', 'rar', 'tar', 'gz', '7z'].includes(fileExtension)) {
                 // For archive files, show a message that they need to download it
@@ -1053,7 +1061,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-cyan-600" />
               <span className="text-lg font-bold">
-                File Details: {truncateFilename(file.name, 30)}
+                {truncateFilename(file.name, 30)}
               </span>
             </DialogTitle>
             <DialogDescription className="text-xs">
@@ -1106,6 +1114,12 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             ) : fileDetails.isVideo ? (
               <div className="p-4 bg-white rounded-md flex justify-center">
                 <div dangerouslySetInnerHTML={{ __html: fileDetails.content }} />
+              </div>
+            ) : fileDetails.isAudio ? (
+              <div className="p-4 bg-white rounded-md flex flex-col items-center justify-center">
+                <Music className="h-12 w-12 text-green-500 mb-3" />
+                <p className="text-green-800 font-medium mb-4">Audio Player</p>
+                <div dangerouslySetInnerHTML={{ __html: fileDetails.content }} className="w-full" />
               </div>
             ) : fileDetails.isArchive ? (
               <div className="p-6 bg-amber-50 rounded-md flex flex-col items-center justify-center text-center border border-amber-200">
