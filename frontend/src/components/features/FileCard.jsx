@@ -738,7 +738,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
 
   return (
     <>
-      <Card className="p-3 hover:shadow-md transition-shadow bg-gradient-to-br from-white to-gray-50 border-gray-200">
+      <Card className="p-3 hover:shadow-md transition-shadow bg-gradient-to-br from-white to-gray-50 border-gray-200 h-full flex flex-col">
         <div className="flex items-start justify-between gap-1">
           <div className="flex items-start gap-2 min-w-0 flex-1">
             <div className="p-1.5 bg-white rounded-md shadow-sm flex items-center justify-center shrink-0">
