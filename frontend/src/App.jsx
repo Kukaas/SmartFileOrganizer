@@ -479,7 +479,8 @@ function App() {
 
   const handleDownload = async (file) => {
     try {
-      setIsLoading(true);
+      // Don't set the global isLoading state here, as we're using component-level loading state
+      // setIsLoading(true);
       
       // Download the file from server
       const { blob, fileName } = await api.downloadFile(file);
@@ -499,11 +500,14 @@ function App() {
       }, 100);
       
       setSyncError(null);
+      return { success: true };
     } catch (error) {
       console.error('Error downloading file:', error);
       setSyncError('Failed to download file from server');
+      throw error; // Rethrow the error to allow .catch in the caller
     } finally {
-      setIsLoading(false);
+      // Don't reset the global isLoading state here
+      // setIsLoading(false);
     }
   };
 

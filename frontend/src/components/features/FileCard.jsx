@@ -172,6 +172,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
   const [summary, setSummary] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportData, setExportData] = useState({ content: "", title: "", filename: "" });
   const [detailsDialog, setDetailsDialog] = useState(false);
@@ -230,12 +231,16 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
     ['exe', 'dll', 'bin', 'so', 'apk', 'app'].includes(fileExtension)
   );
 
-  const handleRename = () => {
+  const handleRename = useCallback(() => {
     if (newFileName.trim() && newFileName !== file.name) {
-      onRename?.(file, newFileName.trim());
+      setIsRenaming(true);
+      Promise.resolve(onRename?.(file, newFileName.trim()))
+        .finally(() => {
+          setIsRenaming(false);
+        });
     }
     setIsRenameDialogOpen(false);
-  };
+  }, [file, newFileName, onRename]);
 
   const openRenameDialog = () => {
     setNewFileName(file.name);
@@ -257,7 +262,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
     setIsDropdownOpen(false);
     setIsDownloading(true);
     
-    onDownload?.(file)
+    Promise.resolve(onDownload?.(file))
       .finally(() => {
         setIsDownloading(false);
       });
@@ -714,6 +719,18 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             <p className="text-sm font-medium text-red-600">Deleting...</p>
           </div>
         )}
+        {isDownloading && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-md z-10">
+            <Download className="h-8 w-8 text-green-500 animate-pulse mb-2" />
+            <p className="text-sm font-medium text-green-600">Downloading...</p>
+          </div>
+        )}
+        {isRenaming && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-md z-10">
+            <Pencil className="h-8 w-8 text-blue-500 animate-pulse mb-2" />
+            <p className="text-sm font-medium text-blue-600">Renaming...</p>
+          </div>
+        )}
         <div className="flex items-start justify-between gap-1">
           <div className="flex items-start gap-2 min-w-0 flex-1">
             <div className="p-1.5 bg-background rounded-md shadow-sm flex items-center justify-center shrink-0">
@@ -765,9 +782,15 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                   {/* File Operations Category */}
                   <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground pt-2 pb-1 px-3">File Operations</DropdownMenuLabel>
                   <DropdownMenuGroup className="px-1">
-                    <DropdownMenuItem onSelect={openRenameDialog} className="gap-2 rounded-sm my-1 px-2 text-foreground hover:bg-primary/10 focus:bg-primary/10">
-                      <Pencil className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm">Rename</span>
+                    <DropdownMenuItem 
+                      onSelect={openRenameDialog} 
+                      className="gap-2 rounded-sm my-1 px-2 text-foreground hover:bg-primary/10 focus:bg-primary/10"
+                      disabled={isRenaming}
+                    >
+                      <Pencil className={`h-4 w-4 text-blue-500 ${isRenaming ? 'animate-pulse' : ''}`} />
+                      <span className="text-sm">
+                        {isRenaming ? 'Renaming...' : 'Rename'}
+                      </span>
                     </DropdownMenuItem>
                     
                     <DropdownMenuItem 
@@ -888,8 +911,9 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
               type="button"
               onClick={handleRename}
               className="bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white"
+              disabled={isRenaming || newFileName.trim() === '' || newFileName === file.name}
             >
-              Rename
+              {isRenaming ? 'Renaming...' : 'Rename'}
             </Button>
           </DialogFooter>
         </DialogContent>
