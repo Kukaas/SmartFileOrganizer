@@ -24,7 +24,7 @@ const fileSchema = new mongoose.Schema({
   tags: [String],
   status: {
     type: String,
-    enum: ['pending_analysis', 'analyzed', 'analyzing', 'error'],
+    enum: ['pending_analysis', 'analyzed', 'analyzing', 'summarizing', 'error'],
     default: 'pending_analysis'
   },
   metadata: {

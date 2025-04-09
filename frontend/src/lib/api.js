@@ -152,7 +152,18 @@ export const api = {
       throw new Error('Invalid file object: missing fileId');
     }
     
-    return apiCall(`/files/${file.fileId}/analyze?service=${service}`, {
+    return apiCall(`/files/${file.fileId}/analyze?service=${service}&type=analyze`, {
+      method: 'POST'
+    });
+  },
+
+  // Summarize a file with AI
+  summarizeFile: async (file) => {
+    if (!file || !file.fileId) {
+      throw new Error('Invalid file object: missing fileId');
+    }
+    
+    return apiCall(`/files/${file.fileId}/analyze?service=gemini&type=summarize`, {
       method: 'POST'
     });
   },

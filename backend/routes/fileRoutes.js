@@ -4,6 +4,10 @@ import { fileController } from '../controllers/fileController.js';
 
 const router = express.Router();
 
+// Apply size limits to specific routes
+const jsonParser = express.json({ limit: '100mb' });
+const urlencodedParser = express.urlencoded({ extended: true, limit: '100mb' });
+
 // Test route to check API key configuration
 router.get('/test-api-keys', async (req, res) => {
   try {
@@ -73,12 +77,12 @@ router.get('/test-api-keys', async (req, res) => {
 });
 
 // File routes
-router.post('/sync', fileController.syncFiles);
+router.post('/sync', jsonParser, fileController.syncFiles);
 router.get('/', fileController.getFiles);
-router.patch('/:fileId', fileController.updateFile);
+router.patch('/:fileId', jsonParser, fileController.updateFile);
 router.delete('/:fileId', fileController.deleteFile);
 router.get('/:fileId/download', fileController.downloadFile);
-router.post('/:fileId/analyze', fileController.analyzeFile);
+router.post('/:fileId/analyze', jsonParser, fileController.analyzeFile);
 router.get('/:fileId/analysis', fileController.getFileAnalysis);
 
 // Device routes

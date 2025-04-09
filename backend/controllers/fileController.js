@@ -1,7 +1,7 @@
 import { Device } from '../models/Device.js';
 import { File } from '../models/File.js';
 import { encryptContent, decryptContent } from '../utils/encryption.js';
-import { analyzeWithHuggingFace, analyzeWithGemini } from '../utils/aiService.js';
+import { analyzeWithHuggingFace, analyzeWithGemini, summarizeWithGemini } from '../utils/aiService.js';
 
 // Get or create device
 const getOrCreateDevice = async (deviceId, deviceInfo) => {
@@ -203,7 +203,7 @@ export const fileController = {
     try {
       const deviceId = req.headers['x-device-id'];
       const { fileId } = req.params;
-      const { service = 'both' } = req.query; // 'huggingface', 'gemini', or 'both'
+      const { service = 'both', type = 'analyze' } = req.query; // 'huggingface', 'gemini', or 'both' and 'analyze' or 'summarize'
 
       if (!deviceId) {
         return res.status(400).json({ error: 'Device ID is required' });
@@ -220,89 +220,225 @@ export const fileController = {
         return res.status(400).json({ error: 'File content not available for analysis' });
       }
 
-      // Update file status to analyzing
-      file.status = 'analyzing';
-      await file.save();
+      try {
+        // Update file status to analyzing/summarizing
+        const newStatus = type === 'analyze' ? 'analyzing' : 'summarizing';
+        file.status = newStatus;
+        await file.save();
+      } catch (error) {
+        console.error('Error updating file status:', error);
+        // If status validation fails, continue with the existing status
+        // but log the error (don't return an error response yet)
+      }
 
       let hfResults = null;
       let geminiResults = null;
-
-      // Run the selected AI services analysis
-      if (service === 'huggingface' || service === 'both') {
-        hfResults = await analyzeWithHuggingFace(file);
-      }
-      
-      if (service === 'gemini' || service === 'both') {
-        geminiResults = await analyzeWithGemini(file);
-      }
-
-      // Update file with analysis results
-      const analysisUpdates = {
-        status: 'analyzed',
-        'analysis.lastAnalyzed': new Date()
-      };
-
-      if (hfResults) {
-        analysisUpdates['analysis.huggingface'] = hfResults;
-      }
-
-      if (geminiResults) {
-        analysisUpdates['analysis.gemini'] = geminiResults;
-      }
-
-      // Generate a summary from the Gemini analysis
       let summary = null;
-      if (geminiResults && !geminiResults.error) {
+
+      // If this is a summary request
+      if (type === 'summarize') {
         try {
-          // Extract the text from Gemini's response using the new format
-          let geminiText = '';
+          console.log(`Starting file summarization for fileId: ${fileId}`);
+          const summaryResult = await summarizeWithGemini(file).catch(error => {
+            console.error('Error in summarizeWithGemini:', error);
+            throw new Error(`Summarization failed: ${error.message}`);
+          });
           
-          if (geminiResults.results.candidates && geminiResults.results.candidates.length > 0) {
-            const candidate = geminiResults.results.candidates[0];
-            
-            if (candidate.content && candidate.content.parts) {
-              // Get text from the first text part
-              const textParts = candidate.content.parts.filter(part => part.text);
-              if (textParts.length > 0) {
-                geminiText = textParts[0].text;
+          geminiResults = summaryResult;
+          
+          // Extract the text from Gemini's summary response
+          try {
+            if (summaryResult.results && 
+                summaryResult.results.candidates && 
+                summaryResult.results.candidates.length > 0) {
+              const candidate = summaryResult.results.candidates[0];
+              
+              if (candidate.content && candidate.content.parts) {
+                // Get text from the first text part
+                const textParts = candidate.content.parts.filter(part => part.text);
+                if (textParts.length > 0) {
+                  summary = textParts[0].text;
+                }
               }
             }
+            
+            if (summary) {
+              // Update the file with the summary
+              await File.findOneAndUpdate(
+                { deviceId, fileId },
+                { 
+                  $set: {
+                    'summary.content': summary,
+                    'summary.lastGenerated': new Date(),
+                    status: 'analyzed'
+                  }
+                }
+              );
+            } else {
+              console.warn(`No summary text could be extracted from the Gemini response for fileId: ${fileId}`);
+              // Still set status back to analyzed if no summary could be extracted
+              await File.findOneAndUpdate(
+                { deviceId, fileId },
+                { $set: { status: 'analyzed' }}
+              );
+            }
+          } catch (error) {
+            console.error('Error extracting or saving summary:', error);
+            // Make sure we set the status back to analyzed even if extraction fails
+            await File.findOneAndUpdate(
+              { deviceId, fileId },
+              { $set: { status: 'analyzed' }}
+            );
           }
           
-          if (geminiText) {
-            summary = geminiText;
-            analysisUpdates['summary.content'] = summary;
-            analysisUpdates['summary.lastGenerated'] = new Date();
-          }
+          return res.json({
+            fileId,
+            type: 'summary',
+            status: 'analyzed',
+            gemini: geminiResults,
+            summary: summary
+          });
         } catch (error) {
-          console.error('Error extracting summary:', error);
+          console.error('Error generating summary:', error);
+          
+          // Update file status to error
+          try {
+            await File.findOneAndUpdate(
+              { deviceId, fileId },
+              { $set: { status: 'error' } }
+            );
+          } catch (updateError) {
+            console.error('Error updating file status to error:', updateError);
+          }
+          
+          return res.status(500).json({ 
+            error: 'Failed to generate summary', 
+            details: error.message 
+          });
         }
       }
+      
+      // This is a standard analysis request
+      try {
+        // Run the selected AI services analysis
+        if (service === 'huggingface' || service === 'both') {
+          hfResults = await analyzeWithHuggingFace(file).catch(error => {
+            console.error('Error in analyzeWithHuggingFace:', error);
+            return {
+              source: 'huggingface',
+              error: `Analysis failed: ${error.message}`,
+              status: 'error'
+            };
+          });
+        }
+        
+        if (service === 'gemini' || service === 'both') {
+          geminiResults = await analyzeWithGemini(file).catch(error => {
+            console.error('Error in analyzeWithGemini:', error);
+            return {
+              source: 'gemini',
+              error: `Analysis failed: ${error.message}`,
+              status: 'error'
+            };
+          });
+        }
 
-      // Update the file with analysis results
-      const updatedFile = await File.findOneAndUpdate(
-        { deviceId, fileId },
-        { $set: analysisUpdates },
-        { new: true }
-      );
+        // Update file with analysis results
+        const analysisUpdates = {
+          status: 'analyzed',
+          'analysis.lastAnalyzed': new Date()
+        };
 
-      res.json({
-        fileId,
-        status: 'analyzed',
-        huggingface: hfResults,
-        gemini: geminiResults,
-        summary: summary
-      });
+        if (hfResults) {
+          analysisUpdates['analysis.huggingface'] = hfResults;
+        }
+
+        if (geminiResults) {
+          analysisUpdates['analysis.gemini'] = geminiResults;
+        }
+
+        // Generate a summary from the Gemini analysis
+        if (geminiResults && !geminiResults.error) {
+          try {
+            // Extract the text from Gemini's response using the new format
+            let geminiText = '';
+            
+            if (geminiResults.results.candidates && geminiResults.results.candidates.length > 0) {
+              const candidate = geminiResults.results.candidates[0];
+              
+              if (candidate.content && candidate.content.parts) {
+                // Get text from the first text part
+                const textParts = candidate.content.parts.filter(part => part.text);
+                if (textParts.length > 0) {
+                  geminiText = textParts[0].text;
+                }
+              }
+            }
+            
+            if (geminiText) {
+              summary = geminiText;
+              analysisUpdates['summary.content'] = summary;
+              analysisUpdates['summary.lastGenerated'] = new Date();
+            }
+          } catch (error) {
+            console.error('Error extracting summary from analysis:', error);
+          }
+        }
+
+        // Update the file with analysis results
+        const updatedFile = await File.findOneAndUpdate(
+          { deviceId, fileId },
+          { $set: analysisUpdates },
+          { new: true }
+        );
+
+        res.json({
+          fileId,
+          status: 'analyzed',
+          huggingface: hfResults,
+          gemini: geminiResults,
+          summary: summary
+        });
+      } catch (error) {
+        console.error('Error in analysis process:', error);
+        
+        // Update file status to error
+        try {
+          await File.findOneAndUpdate(
+            { deviceId, fileId },
+            { $set: { status: 'error' } }
+          );
+        } catch (updateError) {
+          console.error('Error updating file status to error:', updateError);
+        }
+        
+        res.status(500).json({ 
+          error: 'Failed to analyze file',
+          details: error.message
+        });
+      }
     } catch (error) {
-      console.error('Error analyzing file:', error);
+      console.error('Error in analyzeFile controller:', error);
       
-      // Update file status to error
-      await File.findOneAndUpdate(
-        { deviceId: req.headers['x-device-id'], fileId: req.params.fileId },
-        { $set: { status: 'error' } }
-      );
+      // Only attempt to update status if we have deviceId and fileId
+      if (req.headers['x-device-id'] && req.params.fileId) {
+        try {
+          await File.findOneAndUpdate(
+            { 
+              deviceId: req.headers['x-device-id'], 
+              fileId: req.params.fileId 
+            },
+            { $set: { status: 'error' } }
+          );
+        } catch (updateError) {
+          console.error('Error updating file status to error:', updateError);
+        }
+      }
       
-      res.status(500).json({ error: 'Failed to analyze file' });
+      res.status(500).json({ 
+        error: 'Failed to process file',
+        details: error.message
+      });
     }
   },
 

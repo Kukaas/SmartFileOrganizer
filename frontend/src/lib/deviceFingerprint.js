@@ -56,4 +56,32 @@ export const getDeviceFingerprint = async () => {
     console.error('Error generating device fingerprint:', error);
     throw error;
   }
+};
+
+// Clear the device fingerprint from storage
+export const clearDeviceFingerprint = async () => {
+  try {
+    await chrome.storage.local.remove(['deviceFingerprint']);
+    console.log('Device fingerprint cleared successfully');
+    return true;
+  } catch (error) {
+    console.error('Error clearing device fingerprint:', error);
+    throw error;
+  }
+};
+
+// Regenerate the device fingerprint
+export const regenerateDeviceFingerprint = async () => {
+  try {
+    await clearDeviceFingerprint();
+    const fingerprint = await collectDeviceInfo();
+    // Add a small random value to make it unique in case of collisions
+    fingerprint.deviceId = fingerprint.deviceId + Math.random().toString(36).substring(2, 7);
+    await chrome.storage.local.set({ deviceFingerprint: fingerprint });
+    console.log('Device fingerprint regenerated successfully');
+    return fingerprint;
+  } catch (error) {
+    console.error('Error regenerating device fingerprint:', error);
+    throw error;
+  }
 }; 

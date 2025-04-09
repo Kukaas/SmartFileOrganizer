@@ -3,8 +3,9 @@ import { FileUpload } from '@/components/features/FileUpload';
 import { FileGrid } from '@/components/features/FileGrid';
 import { SearchBar } from '@/components/features/SearchBar';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
+import { regenerateDeviceFingerprint } from '@/lib/deviceFingerprint';
 
 // Add custom scrollbar styles
 const scrollbarStyles = `
@@ -43,7 +44,13 @@ function App() {
         setFiles(serverFiles);
       } catch (error) {
         console.error('Error loading files:', error);
-        setSyncError('Failed to load files from server');
+        
+        // Set a more specific error message if it's a MongoDB duplicate key error
+        const errorMessage = error.message.includes('duplicate key error')
+          ? 'Device ID conflict detected. This may occur if you\'re using multiple browsers. Try clearing your browser data.'
+          : 'Failed to load files from server';
+          
+        setSyncError(errorMessage);
         
         // Fallback to local storage
         const { files: localFiles } = await chrome.storage.local.get(['files']);
@@ -79,7 +86,14 @@ function App() {
             setSyncError(null);
           } catch (error) {
             console.error('Error syncing with server:', error);
-            setSyncError('Changes will be synced when connection is restored');
+            
+            // Set a more specific error message if it's a MongoDB duplicate key error
+            if (error.message.includes('duplicate key error') || 
+                (typeof error === 'object' && error.code === 11000)) {
+              setSyncError('Device ID conflict detected. This may occur if you\'re using multiple browsers. Try clearing local storage or device fingerprint.');
+            } else {
+              setSyncError('Changes will be synced when connection is restored');
+            }
           }
         }
       }
@@ -114,6 +128,9 @@ function App() {
         let fileType = file.type;
         if (fileExtension === 'pdf' && !file.type.includes('pdf')) {
           fileType = 'application/pdf';
+        } else if ((fileExtension === 'docx' || fileExtension === 'doc') && !file.type.includes('document')) {
+          // Handle Word documents
+          fileType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         }
         
         // Generate appropriate tags
@@ -128,8 +145,10 @@ function App() {
           tags.push(fileExtension);
         }
         
-        // Add document tag for PDFs
-        if (fileExtension === 'pdf' || fileType === 'application/pdf') {
+        // Add document tag for PDFs and Word documents
+        if (fileExtension === 'pdf' || fileType === 'application/pdf' || 
+            fileExtension === 'docx' || fileExtension === 'doc' || 
+            fileType.includes('document')) {
           tags.push('document');
         }
         
@@ -161,7 +180,14 @@ function App() {
           setSyncError(null);
         } catch (error) {
           console.error('Error syncing with server:', error);
-          setSyncError('Changes will be synced when connection is restored');
+          
+          // Set a more specific error message if it's a MongoDB duplicate key error
+          if (error.message.includes('duplicate key error') || 
+              (typeof error === 'object' && error.code === 11000)) {
+            setSyncError('Device ID conflict detected. This may occur if you\'re using multiple browsers. Try clearing local storage or device fingerprint.');
+          } else {
+            setSyncError('Changes will be synced when connection is restored');
+          }
         }
       });
     } catch (error) {
@@ -268,14 +294,138 @@ function App() {
       return analysisResult;
     } catch (error) {
       console.error('Error analyzing file:', error);
-      setSyncError('Failed to analyze file');
+      
+      // Update file status to error in local state
+      setFiles(currentFiles => 
+        currentFiles.map(f => f.fileId === file.fileId ? { 
+          ...f, 
+          status: 'error',
+          error: error.message || 'Unknown error during analysis'
+        } : f)
+      );
+      
+      // Update local storage with error status
+      chrome.storage.local.get(['files'], function(result) {
+        const updatedFiles = (result.files || []).map(f => 
+          f.fileId === file.fileId ? { 
+            ...f, 
+            status: 'error',
+            error: error.message || 'Unknown error during analysis'
+          } : f
+        );
+        chrome.storage.local.set({ files: updatedFiles });
+      });
+      
+      // Create a more detailed error message based on the error
+      let errorMessage = 'Failed to analyze file';
+      
+      if (error.message) {
+        if (error.message.includes('API call failed')) {
+          errorMessage = 'Server connection error during analysis';
+        } else if (error.message.includes('File content not available')) {
+          errorMessage = 'File content is missing or corrupted';
+        } else if (error.message.includes('Hugging Face API key is missing') || 
+                  error.message.includes('Gemini API key is missing')) {
+          errorMessage = 'AI service configuration error';
+        } else if (error.message.includes('Unsupported file type')) {
+          // Provide more specific guidance about supported file types
+          const fileExt = file.name.split('.').pop().toLowerCase();
+          if (fileExt === 'pdf' || fileExt === 'docx' || fileExt === 'doc') {
+            errorMessage = `Document analysis error: Unable to extract text from this ${fileExt.toUpperCase()} file. The file may be password-protected, corrupted, or contain only scanned images.`;
+          } else {
+            errorMessage = `This file type (${fileExt}) is not supported for analysis. Supported document types include TXT, PDF, DOC, and DOCX files.`;
+          }
+        } else {
+          errorMessage = `Analysis failed: ${error.message}`;
+        }
+      }
+      
+      setSyncError(errorMessage);
       throw error;
     }
   };
   
   const handleSummarize = async (file) => {
-    // We'll use the existing handleAnalyze function with a service parameter
-    return handleAnalyze(file);
+    try {
+      setSyncError(null);
+      
+      // Call the AI service to summarize the file
+      const summaryResult = await api.summarizeFile(file);
+      
+      // Update local state with summary status
+      setFiles(currentFiles => 
+        currentFiles.map(f => f.fileId === file.fileId ? { 
+          ...f, 
+          status: 'analyzed',
+          lastSummarized: new Date().toISOString(),
+          summary: summaryResult.summary
+        } : f)
+      );
+      
+      // Update local storage
+      chrome.storage.local.get(['files'], function(result) {
+        const updatedFiles = (result.files || []).map(f => 
+          f.fileId === file.fileId ? { 
+            ...f, 
+            status: 'analyzed',
+            lastSummarized: new Date().toISOString(),
+            summary: summaryResult.summary
+          } : f
+        );
+        chrome.storage.local.set({ files: updatedFiles });
+      });
+      
+      return summaryResult;
+    } catch (error) {
+      console.error('Error summarizing file:', error);
+      
+      // Update file status to error in local state
+      setFiles(currentFiles => 
+        currentFiles.map(f => f.fileId === file.fileId ? { 
+          ...f, 
+          status: 'error',
+          error: error.message || 'Unknown error during summarization'
+        } : f)
+      );
+      
+      // Update local storage with error status
+      chrome.storage.local.get(['files'], function(result) {
+        const updatedFiles = (result.files || []).map(f => 
+          f.fileId === file.fileId ? { 
+            ...f, 
+            status: 'error',
+            error: error.message || 'Unknown error during summarization'
+          } : f
+        );
+        chrome.storage.local.set({ files: updatedFiles });
+      });
+      
+      // Create a more detailed error message based on the error
+      let errorMessage = 'Failed to summarize file';
+      
+      if (error.message) {
+        if (error.message.includes('API call failed')) {
+          errorMessage = 'Server connection error during summarization';
+        } else if (error.message.includes('File content not available')) {
+          errorMessage = 'File content is missing or corrupted';
+        } else if (error.message.includes('Gemini API key is missing')) {
+          errorMessage = 'AI service configuration error';
+        } else if (error.message.includes('Unsupported file type')) {
+          // Provide more specific guidance about supported file types
+          const fileExt = file.name.split('.').pop().toLowerCase();
+          if (fileExt === 'pdf' || fileExt === 'docx' || fileExt === 'doc') {
+            errorMessage = `Document summarization error: Unable to extract text from this ${fileExt.toUpperCase()} file. The file may be password-protected, corrupted, or contain only scanned images.`;
+          } else {
+            errorMessage = `This file type (${fileExt}) is not supported for summarization. Supported document types include TXT, PDF, DOC, and DOCX files.`;
+          }
+        } else {
+          errorMessage = `Summarization failed: ${error.message}`;
+        }
+      }
+      
+      setSyncError(errorMessage);
+      throw error;
+    }
   };
 
   const handleDownload = async (file) => {
@@ -303,6 +453,32 @@ function App() {
     } catch (error) {
       console.error('Error downloading file:', error);
       setSyncError('Failed to download file from server');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFixDeviceIDConflict = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Regenerate device fingerprint
+      const newFingerprint = await regenerateDeviceFingerprint();
+      
+      // Update local storage
+      chrome.storage.local.set({ deviceFingerprint: newFingerprint });
+      
+      // Load files from server again
+      const serverFiles = await api.getFiles();
+      
+      // Update local state and storage
+      setFiles(serverFiles);
+      await chrome.storage.local.set({ files: serverFiles });
+      
+      setSyncError(null);
+    } catch (error) {
+      console.error('Error fixing device ID conflict:', error);
+      setSyncError('Failed to fix device ID conflict');
     } finally {
       setIsLoading(false);
     }
@@ -371,6 +547,17 @@ function App() {
           onDownload={handleDownload}
         />
       </div>
+
+      {syncError === 'Device ID conflict detected. This may occur if you\'re using multiple browsers. Try clearing local storage or device fingerprint.' && (
+        <div className="absolute top-[100px] right-0 left-0 z-10 bg-white pt-4 px-4 pb-2 border-b border-gray-100 shadow-sm">
+          <div className="flex items-center justify-center">
+            <Button onClick={handleFixDeviceIDConflict}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Fix Device ID Conflict
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

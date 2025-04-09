@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 export function FileGrid({ files, onDelete, onRename, onAnalyze, onSummarize, onDownload }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
       {files.map((file, index) => (
         <motion.div
           key={file.fileId || index}
@@ -23,10 +23,10 @@ export function FileGrid({ files, onDelete, onRename, onAnalyze, onSummarize, on
         </motion.div>
       ))}
       {files.length === 0 && (
-        <div className="col-span-full flex flex-col items-center justify-center py-12 text-muted-foreground bg-gray-50 rounded-lg border border-dashed">
+        <div className="col-span-full flex flex-col items-center justify-center py-8 text-muted-foreground bg-gray-50 rounded-lg border border-dashed">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-12 w-12 text-gray-300 mb-4"
+            className="h-10 w-10 text-gray-300 mb-3"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -38,7 +38,7 @@ export function FileGrid({ files, onDelete, onRename, onAnalyze, onSummarize, on
               d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <p className="text-lg font-medium mb-1">No files found</p>
+          <p className="text-base font-medium mb-1">No files found</p>
           <p className="text-sm">Upload some files to get started!</p>
         </div>
       )}
