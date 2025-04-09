@@ -4,6 +4,7 @@ import { FileGrid } from '@/components/features/FileGrid';
 import { SearchBar } from '@/components/features/SearchBar';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { api } from '@/lib/api';
 
 // Add custom scrollbar styles
 const scrollbarStyles = `
@@ -28,23 +29,59 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [syncError, setSyncError] = useState(null);
 
-  // Load files from Chrome storage
+  // Load files from server and keep local storage in sync
   useEffect(() => {
-    // Add scrollbar styles to document
+    const loadFiles = async () => {
+      try {
+        // Get files from server
+        const serverFiles = await api.getFiles();
+        
+        // Update local storage
+        await chrome.storage.local.set({ files: serverFiles });
+        setFiles(serverFiles);
+      } catch (error) {
+        console.error('Error loading files:', error);
+        setSyncError('Failed to load files from server');
+        
+        // Fallback to local storage
+        const { files: localFiles } = await chrome.storage.local.get(['files']);
+        setFiles(localFiles || []);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFiles();
+
+    // Add scrollbar styles
     const style = document.createElement('style');
     style.textContent = scrollbarStyles;
     document.head.appendChild(style);
 
-    chrome.storage.local.get(['files'], function(result) {
-      setFiles(result.files || []);
-      setIsLoading(false);
-    });
-
     // Listen for storage changes
-    const handleStorageChange = (changes) => {
+    const handleStorageChange = async (changes) => {
       if (changes.files) {
-        setFiles(changes.files.newValue || []);
+        const newFiles = changes.files.newValue || [];
+        
+        // Only update state if files have actually changed
+        if (JSON.stringify(newFiles) !== JSON.stringify(files)) {
+          setFiles(newFiles);
+          
+          // Sync with server
+          try {
+            const serverFiles = await api.syncFiles(newFiles);
+            // Only update state if server response is different
+            if (JSON.stringify(serverFiles) !== JSON.stringify(newFiles)) {
+              setFiles(serverFiles);
+            }
+            setSyncError(null);
+          } catch (error) {
+            console.error('Error syncing with server:', error);
+            setSyncError('Changes will be synced when connection is restored');
+          }
+        }
       }
     };
 
@@ -69,24 +106,37 @@ function App() {
   const handleFilesSelected = async (newFiles) => {
     setIsLoading(true);
     try {
-      const filePromises = newFiles.map(async (file) => ({
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2),
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        dateAdded: new Date().toISOString(),
-        tags: [file.type.split('/')[0], file.name.split('.').pop().toLowerCase()],
-        status: 'pending_analysis',
-        // Create object URL for local files
-        url: URL.createObjectURL(file)
-      }));
+      const filePromises = newFiles.map(async (file) => {
+        const fileId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        return {
+          id: fileId, // For frontend reference
+          fileId: fileId, // For backend reference
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          dateAdded: new Date().toISOString(),
+          tags: [file.type.split('/')[0], file.name.split('.').pop().toLowerCase()],
+          status: 'pending_analysis',
+          url: URL.createObjectURL(file)
+        };
+      });
 
       const processedFiles = await Promise.all(filePromises);
 
-      chrome.storage.local.get(['files'], function(result) {
+      // Update local storage and trigger sync
+      chrome.storage.local.get(['files'], async function(result) {
         const existingFiles = result.files || [];
         const updatedFiles = [...existingFiles, ...processedFiles];
-        chrome.storage.local.set({ files: updatedFiles });
+        await chrome.storage.local.set({ files: updatedFiles });
+        
+        // Sync with server
+        try {
+          await api.syncFiles(updatedFiles);
+          setSyncError(null);
+        } catch (error) {
+          console.error('Error syncing with server:', error);
+          setSyncError('Changes will be synced when connection is restored');
+        }
       });
     } catch (error) {
       console.error('Error processing files:', error);
@@ -95,20 +145,68 @@ function App() {
     }
   };
 
-  const handleDelete = (fileToDelete) => {
-    chrome.storage.local.get(['files'], function(result) {
-      const updatedFiles = (result.files || []).filter(file => file.id !== fileToDelete.id);
-      chrome.storage.local.set({ files: updatedFiles });
-    });
+  const handleDelete = async (fileToDelete) => {
+    try {
+      if (!fileToDelete.fileId) {
+        console.error('Cannot delete file without fileId:', fileToDelete);
+        setSyncError('Failed to delete file: Invalid file ID');
+        return;
+      }
+
+      // Delete from server first
+      await api.deleteFile(fileToDelete);
+      
+      // Update state immediately
+      setFiles(currentFiles => currentFiles.filter(file => file.fileId !== fileToDelete.fileId));
+      
+      // Then update local storage
+      chrome.storage.local.get(['files'], function(result) {
+        const updatedFiles = (result.files || []).filter(file => file.fileId !== fileToDelete.fileId);
+        chrome.storage.local.set({ files: updatedFiles });
+      });
+      
+      setSyncError(null);
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      setSyncError('Failed to delete file from server');
+    }
   };
 
-  const handleRename = (file, newName) => {
-    chrome.storage.local.get(['files'], function(result) {
-      const updatedFiles = (result.files || []).map(f => 
-        f.id === file.id ? { ...f, name: newName } : f
+  const handleRename = async (file, newName) => {
+    try {
+      if (!file.fileId) {
+        console.error('Cannot rename file without fileId:', file);
+        setSyncError('Failed to rename file: Invalid file ID');
+        return;
+      }
+
+      // Update on server first
+      const updatedFile = await api.updateFile(file, { name: newName });
+      
+      // Update state immediately
+      setFiles(currentFiles => 
+        currentFiles.map(f => f.fileId === file.fileId ? { ...f, name: newName } : f)
       );
-      chrome.storage.local.set({ files: updatedFiles });
-    });
+      
+      // Then update local storage
+      chrome.storage.local.get(['files'], function(result) {
+        const updatedFiles = (result.files || []).map(f => 
+          f.fileId === file.fileId ? { ...f, name: newName } : f
+        );
+        chrome.storage.local.set({ files: updatedFiles }, () => {
+          // Clear any error state after successful update
+          setSyncError(null);
+        });
+      });
+    } catch (error) {
+      console.error('Error renaming file:', error);
+      setSyncError('Failed to update file on server');
+      
+      // Revert the state if server update failed
+      setFiles(currentFiles => 
+        currentFiles.map(f => f.fileId === file.fileId ? { ...f, name: file.name } : f)
+      );
+    }
   };
 
   const filteredFiles = files.filter(file => {
@@ -133,12 +231,19 @@ function App() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Smart File Organizer</h1>
-          {isLoading && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Processing...</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {isLoading && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Processing...</span>
+              </div>
+            )}
+            {syncError && (
+              <div className="text-sm text-yellow-600">
+                {syncError}
+              </div>
+            )}
+          </div>
         </div>
 
         <FileUpload onFilesSelected={handleFilesSelected} />
