@@ -85,21 +85,13 @@ export function FileUpload({ onFilesSelected }) {
             </div>
             <div>
               <p className="font-medium text-sm">
-                {isDragActive ? 'Drop files here' : 'Drop files here or'}
+                {isDragActive ? 'Drop files here' : 'Drop files here'}
               </p>
               <p className="text-xs text-muted-foreground">
                 Supports images, documents, archives, video, and audio
               </p>
             </div>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            className="bg-primary hover:bg-primary/90"
-            onClick={handleButtonClick}
-          >
-            Select Files
-          </Button>
         </div>
       </Card>
 

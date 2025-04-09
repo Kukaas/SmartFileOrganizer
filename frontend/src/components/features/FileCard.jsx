@@ -14,7 +14,9 @@ import {
   FileSearch,
   Sparkles,
   Download,
-  FileOutput
+  FileOutput,
+  Trash2,
+  Pencil
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -520,6 +522,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                   className="z-50"
                 >
                   <DropdownMenuItem onSelect={openRenameDialog} className="gap-2">
+                    <Pencil className="h-4 w-4 text-blue-500" />
                     <span className="text-sm">Rename</span>
                   </DropdownMenuItem>
                   
@@ -560,6 +563,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                     onSelect={handleDelete}
                     className="text-red-500 gap-2"
                   >
+                    <Trash2 className="h-4 w-4" />
                     <span className="text-sm">Delete</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
