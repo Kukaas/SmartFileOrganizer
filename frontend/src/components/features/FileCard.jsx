@@ -16,7 +16,8 @@ import {
   Download,
   FileOutput,
   Trash2,
-  Pencil
+  Pencil,
+  Eye
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { exportToPDF, exportToDOCX } from '@/utils/documentExporter';
 import { ExportPreviewDialog } from './ExportPreviewDialog';
+import { api } from '@/lib/api';
 
 // Component to cleanly display content without markdown conversion
 function ContentDisplay({ content, color = "purple" }) {
@@ -172,6 +174,8 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
   const [isDownloading, setIsDownloading] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportData, setExportData] = useState({ content: "", title: "", filename: "" });
+  const [detailsDialog, setDetailsDialog] = useState(false);
+  const [fileDetails, setFileDetails] = useState({ content: "", isLoading: false, error: null });
   
   const menuTriggerRef = useRef(null);
   const inputRef = useRef(null);
@@ -253,6 +257,210 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
         setIsDownloading(false);
       });
   }, [file, onDownload]);
+  
+  const handleViewDetails = useCallback(() => {
+    setIsDropdownOpen(false);
+    setDetailsDialog(true);
+    setFileDetails({ content: "", isLoading: true, error: null });
+    
+    // Call the API to download the file and decode it
+    api.downloadFile(file)
+      .then(result => {
+        if (result.blob) {
+          // For binary files, we'll show file type information
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              // Handle different file types
+              if (file.type.includes('text') || ['txt', 'md', 'js', 'html', 'css', 'json', 'xml', 'py', 'c', 'cpp', 'java'].includes(fileExtension)) {
+                // For text files, display the text content
+                setFileDetails({
+                  content: reader.result,
+                  isLoading: false,
+                  error: null
+                });
+              } else if (file.type === 'application/pdf' || fileExtension === 'pdf') {
+                // For PDF files, display using PDF embed
+                const pdfUrl = URL.createObjectURL(result.blob);
+                setFileDetails({
+                  content: pdfUrl,
+                  isLoading: false,
+                  error: null,
+                  isPdf: true
+                });
+              } else if (file.type.includes('document') || fileExtension === 'docx' || fileExtension === 'doc') {
+                // For Word documents, try to extract text or show a preview
+                // First attempt to display as text
+                try {
+                  // Convert ArrayBuffer to text for content display
+                  const docText = reader.result;
+                  
+                  // If it's binary content (like .docx), we'll show a viewer message instead
+                  if (docText.includes("PK") || /[^\x20-\x7E]/g.test(docText.substring(0, 100))) {
+                    setFileDetails({
+                      content: "Microsoft Word documents can't be displayed directly. The file has been loaded and you can download it.",
+                      isLoading: false,
+                      error: null,
+                      isDocx: true
+                    });
+                  } else {
+                    // Plain text document content
+                    setFileDetails({
+                      content: docText,
+                      isLoading: false,
+                      error: null
+                    });
+                  }
+                } catch (docError) {
+                  // Fallback for document files
+                  setFileDetails({
+                    content: "Microsoft Word documents can't be displayed directly. The file has been loaded and you can download it.",
+                    isLoading: false,
+                    error: null,
+                    isDocx: true
+                  });
+                }
+              } else if (file.type.startsWith('image/')) {
+                // For images, we'll display an image with the base64 data
+                setFileDetails({
+                  content: `<img src="${URL.createObjectURL(result.blob)}" alt="${file.name}" class="max-w-full h-auto" />`,
+                  isLoading: false,
+                  error: null,
+                  isImage: true
+                });
+              } else if (file.type.startsWith('video/')) {
+                // For videos, display a video player
+                setFileDetails({
+                  content: `<video src="${URL.createObjectURL(result.blob)}" controls class="max-w-full h-auto">Your browser does not support the video tag.</video>`,
+                  isLoading: false,
+                  error: null,
+                  isVideo: true
+                });
+              } else if (file.type.includes('zip') || file.type.includes('archive') || file.type.includes('compressed') || 
+                        ['zip', 'rar', 'tar', 'gz', '7z'].includes(fileExtension)) {
+                // For archive files, show a message that they need to download it
+                setFileDetails({
+                  content: "Archive files cannot be viewed directly. Please download the file to access its contents.",
+                  isLoading: false,
+                  error: null,
+                  isArchive: true
+                });
+              } else {
+                // For other binary files, show type information
+                setFileDetails({
+                  content: `Binary file: ${file.type || 'Unknown type'}\nSize: ${formatFileSize(file.size)}`,
+                  isLoading: false,
+                  error: null
+                });
+              }
+            } catch (error) {
+              setFileDetails({
+                content: "",
+                isLoading: false,
+                error: `Failed to decode file content: ${error.message}`
+              });
+            }
+          };
+          
+          reader.onerror = () => {
+            setFileDetails({
+              content: "",
+              isLoading: false,
+              error: "Failed to read file content"
+            });
+          };
+          
+          // Read as text for text files, otherwise as binary string
+          if (file.type.includes('text') || ['txt', 'md', 'js', 'html', 'css', 'json', 'xml', 'py', 'c', 'cpp', 'java'].includes(fileExtension)) {
+            reader.readAsText(result.blob);
+          } else if (file.type === 'application/pdf' || fileExtension === 'pdf') {
+            // For PDFs, we need the blob URL, not the text content
+            reader.readAsDataURL(result.blob);
+          } else if (file.type.includes('document') || fileExtension === 'docx' || fileExtension === 'doc') {
+            // Try to read document files as text first
+            reader.readAsText(result.blob);
+          } else {
+            reader.readAsDataURL(result.blob);
+          }
+        } else if (result.content) {
+          // If content is provided directly as base64
+          try {
+            // Check file type for special handling
+            if (file.type === 'application/pdf' || fileExtension === 'pdf') {
+              // Create a PDF blob from base64 content
+              const byteCharacters = atob(result.content);
+              const byteArrays = [];
+              
+              for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                const slice = byteCharacters.slice(offset, offset + 512);
+                
+                const byteNumbers = new Array(slice.length);
+                for (let i = 0; i < slice.length; i++) {
+                  byteNumbers[i] = slice.charCodeAt(i);
+                }
+                
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+              }
+              
+              const blob = new Blob(byteArrays, { type: 'application/pdf' });
+              const pdfUrl = URL.createObjectURL(blob);
+              
+              setFileDetails({
+                content: pdfUrl,
+                isLoading: false,
+                error: null,
+                isPdf: true
+              });
+            } else if (file.type.includes('document') || fileExtension === 'docx' || fileExtension === 'doc') {
+              // For Word documents
+              setFileDetails({
+                content: "Microsoft Word documents can't be displayed directly. The file has been loaded and you can download it.",
+                isLoading: false,
+                error: null,
+                isDocx: true
+              });
+            } else if (file.type.includes('zip') || file.type.includes('archive') || file.type.includes('compressed') || 
+                ['zip', 'rar', 'tar', 'gz', '7z'].includes(fileExtension)) {
+              setFileDetails({
+                content: "Archive files cannot be viewed directly. Please download the file to access its contents.",
+                isLoading: false,
+                error: null,
+                isArchive: true
+              });
+            } else {
+              // Decode base64 content for text files
+              const decodedContent = atob(result.content);
+              setFileDetails({
+                content: decodedContent,
+                isLoading: false,
+                error: null
+              });
+            }
+          } catch (error) {
+            setFileDetails({
+              content: "",
+              isLoading: false,
+              error: `Failed to decode base64 content: ${error.message}`
+            });
+          }
+        } else {
+          setFileDetails({
+            content: "",
+            isLoading: false,
+            error: "No file content available"
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Error loading file details:', error);
+        setFileDetails({
+          content: "",
+          isLoading: false,
+          error: error.message || "Failed to load file details"
+        });
+      });
+  }, [file, fileExtension]);
   
   const handleAnalyze = useCallback(() => {
     setIsDropdownOpen(false);
@@ -597,6 +805,14 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                         {isDownloading ? 'Downloading...' : 'Download'}
                       </span>
                     </DropdownMenuItem>
+                    
+                    <DropdownMenuItem 
+                      onSelect={handleViewDetails}
+                      className="gap-2 rounded-sm my-1 px-2 text-gray-700 hover:bg-cyan-50 focus:bg-cyan-50"
+                    >
+                      <Eye className="h-4 w-4 text-cyan-500" />
+                      <span className="text-sm">View Details</span>
+                    </DropdownMenuItem>
                   </DropdownMenuGroup>
                   
                   {/* AI Tools Category - only shown for analyzable files */}
@@ -829,6 +1045,124 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
         title={exportData.title}
         filename={exportData.filename}
       />
+      
+      {/* File Details Dialog */}
+      <Dialog open={detailsDialog} onOpenChange={setDetailsDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col overflow-hidden">
+          <DialogHeader className="pb-1 flex-shrink-0 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-cyan-600" />
+              <span className="text-lg font-bold">
+                File Details: {truncateFilename(file.name, 30)}
+              </span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              File size: {formatFileSize(file.size)} | Type: {file.type || "Unknown"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white to-cyan-50">
+            {fileDetails.isLoading ? (
+              <div className="flex flex-col items-center justify-center py-6 bg-gray-50 rounded-lg">
+                <FileText className="h-10 w-10 text-cyan-600 animate-pulse mb-3" />
+                <p className="text-base font-medium text-gray-700 mb-2">Loading file content...</p>
+                <div className="space-y-1 w-64">
+                  <div className="h-2 bg-cyan-200 rounded animate-pulse"></div>
+                  <div className="h-2 bg-cyan-300 rounded animate-pulse"></div>
+                  <div className="h-2 bg-cyan-200 rounded animate-pulse"></div>
+                </div>
+              </div>
+            ) : fileDetails.error ? (
+              <div className="bg-red-50 p-4 rounded-md text-red-500 border border-red-200">
+                <p className="font-medium">Error loading file content</p>
+                <p className="text-sm mt-1">{fileDetails.error}</p>
+              </div>
+            ) : fileDetails.isPdf ? (
+              <div className="p-4 bg-white rounded-md flex justify-center h-full" style={{ minHeight: '400px' }}>
+                <iframe 
+                  src={fileDetails.content}
+                  title={`PDF: ${file.name}`}
+                  className="w-full h-full border-0 rounded"
+                  style={{ minHeight: '400px' }}
+                />
+              </div>
+            ) : fileDetails.isDocx ? (
+              <div className="p-6 bg-blue-50 rounded-md flex flex-col items-center justify-center text-center border border-blue-200">
+                <FileText className="h-12 w-12 text-blue-500 mb-3" />
+                <p className="text-blue-800 font-medium mb-1">Word Document</p>
+                <p className="text-blue-700 mb-4">{fileDetails.content}</p>
+                <Button
+                  onClick={handleDownload}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Document
+                </Button>
+              </div>
+            ) : fileDetails.isImage ? (
+              <div className="p-4 bg-white rounded-md flex justify-center">
+                <div dangerouslySetInnerHTML={{ __html: fileDetails.content }} />
+              </div>
+            ) : fileDetails.isVideo ? (
+              <div className="p-4 bg-white rounded-md flex justify-center">
+                <div dangerouslySetInnerHTML={{ __html: fileDetails.content }} />
+              </div>
+            ) : fileDetails.isArchive ? (
+              <div className="p-6 bg-amber-50 rounded-md flex flex-col items-center justify-center text-center border border-amber-200">
+                <FileArchive className="h-12 w-12 text-amber-500 mb-3" />
+                <p className="text-amber-800 font-medium mb-1">Archive File</p>
+                <p className="text-amber-700 mb-4">{fileDetails.content}</p>
+                <Button
+                  onClick={handleDownload}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Archive
+                </Button>
+              </div>
+            ) : (
+              <div className="p-4 bg-white rounded-md">
+                <pre className="text-sm whitespace-pre-wrap break-words font-mono bg-gray-50 p-3 rounded border border-gray-200 max-h-[500px] overflow-auto">
+                  {fileDetails.content}
+                </pre>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="pt-4 flex-shrink-0 border-t mt-auto">
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => setDetailsDialog(false)}
+            >
+              Close
+            </Button>
+            {!fileDetails.isLoading && !fileDetails.error && fileDetails.content && 
+             !fileDetails.isArchive && !fileDetails.isPdf && !fileDetails.isDocx && (
+              <Button 
+                type="button"
+                className="bg-gradient-to-r from-cyan-500 to-cyan-700 hover:from-cyan-600 hover:to-cyan-800"
+                onClick={() => {
+                  const blob = new Blob([fileDetails.content], { type: file.type || 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = file.name; // Use the original filename with extension
+                  document.body.appendChild(a);
+                  a.click();
+                  setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  }, 100);
+                }}
+              >
+                <FileOutput className="h-4 w-4 mr-2" />
+                Export Content
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
