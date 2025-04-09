@@ -24,12 +24,27 @@ const fileSchema = new mongoose.Schema({
   tags: [String],
   status: {
     type: String,
-    enum: ['pending_analysis', 'analyzed', 'error'],
+    enum: ['pending_analysis', 'analyzed', 'analyzing', 'error'],
     default: 'pending_analysis'
   },
   metadata: {
     type: Map,
     of: mongoose.Schema.Types.Mixed
+  },
+  analysis: {
+    huggingface: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null
+    },
+    gemini: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null
+    },
+    lastAnalyzed: Date
+  },
+  summary: {
+    content: String,
+    lastGenerated: Date
   },
   dateAdded: {
     type: Date,

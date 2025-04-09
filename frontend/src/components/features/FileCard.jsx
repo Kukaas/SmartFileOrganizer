@@ -93,65 +93,152 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
     setIsDropdownOpen(false);
     setIsAnalyzing(true);
     setAnalysisDialog(true);
-    
-    // Simulate AI analyzing the document
-    setTimeout(() => {
-      const result = `# AI Analysis of ${file.name}
+    setAnalysis("");
 
-## Document Structure
-- The document contains approximately 8 pages
-- Contains 3 main sections with 12 subsections
-- Includes 4 tables and 2 charts
+    // Call the API to analyze the file
+    onAnalyze?.(file)
+      .then(result => {   
+        // Format the results for display
+        let formattedAnalysis = '';
 
-## Key Entities Detected
-- Companies: Acme Corp, TechSolutions Inc.
-- Locations: New York, London, Tokyo
-- People: John Smith, Maria Rodriguez, Akira Tanaka
-- Dates: March 15, 2023, Q4 2022, January 2023
+        // Format Hugging Face results
+        if (result.huggingface && !result.huggingface.error) {
+          formattedAnalysis += `# Hugging Face Analysis\n\n`;
+          
+          if (result.huggingface.analysisType === 'image-classification') {
+            formattedAnalysis += `## Image Classification\n\n`;
+            const classifications = result.huggingface.results || [];
+            classifications.forEach((item, i) => {
+              formattedAnalysis += `- ${item.label}: ${(item.score * 100).toFixed(2)}%\n`;
+            });
+          } else {
+            formattedAnalysis += `## Text Analysis\n\n`;
+            const classifications = Array.isArray(result.huggingface.results) 
+              ? result.huggingface.results 
+              : [result.huggingface.results];
+              
+            classifications.forEach((item, i) => {
+              if (item.label) {
+                formattedAnalysis += `- ${item.label}: ${(item.score * 100).toFixed(2)}%\n`;
+              }
+            });
+          }
+          
+          formattedAnalysis += `\n`;
+        }
 
-## Topics Identified
-1. Financial performance analysis (45% of content)
-2. Market trend evaluation (30% of content)
-3. Strategic recommendations (25% of content)
+        // Format Gemini results - updated for gemini-2.0-flash format
+        if (result.gemini && !result.gemini.error) {
+          formattedAnalysis += `# Gemini Analysis\n\n`;
+          
+          try {
+            // The new model response format might be different
+            const geminiResults = result.gemini.results;
+            
+            if (geminiResults.candidates && geminiResults.candidates.length > 0) {
+              // Try to extract text from the response based on the new format
+              const candidate = geminiResults.candidates[0];
+              
+              if (candidate.content && candidate.content.parts) {
+                // Extract text from the first text part
+                const textParts = candidate.content.parts.filter(part => part.text);
+                if (textParts.length > 0) {
+                  formattedAnalysis += textParts[0].text;
+                } else {
+                  formattedAnalysis += 'No text content found in response.';
+                }
+              } else {
+                formattedAnalysis += 'Unexpected response format.';
+              }
+            } else if (geminiResults.text) {
+              // Handle alternative response format
+              formattedAnalysis += geminiResults.text;
+            } else {
+              // Fallback: stringify the result
+              formattedAnalysis += `Raw response: ${JSON.stringify(geminiResults, null, 2)}`;
+            }
+          } catch (error) {
+            formattedAnalysis += `Error parsing Gemini results: ${error.message}\n`;
+            formattedAnalysis += `Raw response: ${JSON.stringify(result.gemini.results, null, 2)}\n`;
+          }
+        }
 
-## Sentiment Analysis
-Overall sentiment: Positive (72%)
-Key areas of concern: Supply chain disruptions, market volatility
+        // Handle errors
+        if ((result.huggingface && result.huggingface.error) || (result.gemini && result.gemini.error)) {
+          formattedAnalysis += `\n\n## Analysis Errors\n\n`;
+          
+          if (result.huggingface && result.huggingface.error) {
+            formattedAnalysis += `- Hugging Face: ${result.huggingface.error}\n`;
+          }
+          
+          if (result.gemini && result.gemini.error) {
+            formattedAnalysis += `- Gemini: ${result.gemini.error}\n`;
+          }
+        }
 
-## Action Items Detected
-- Review Q1 budget allocations by April 30th
-- Schedule stakeholder meeting for project approval
-- Finalize partner agreements before end of quarter`;
-      
-      setAnalysis(result);
-      setIsAnalyzing(false);
-    }, 3000);
-  }, [file]);
+        setAnalysis(formattedAnalysis);
+        setIsAnalyzing(false);
+      })
+      .catch(error => {
+        console.error('Error analyzing file:', error);
+        setAnalysis(`# Analysis Error\n\nFailed to analyze file: ${error.message}`);
+        setIsAnalyzing(false);
+      });
+  }, [file, onAnalyze]);
   
   const handleSummarize = useCallback(() => {
     setIsDropdownOpen(false);
     setIsSummarizing(true);
     setSummaryDialog(true);
-    
-    // Simulate AI summarizing the document
-    setTimeout(() => {
-      const result = `# Executive Summary: ${file.name.split('.')[0]}
+    setSummary("");
 
-This document provides a comprehensive analysis of Q1 2023 financial results and market positioning. The company reported a 15% year-over-year revenue growth, exceeding market expectations by 3.2 percentage points. Profit margins improved to a 28% high, supported by strategic cost-saving initiatives implemented over the past two quarters.
-
-Key highlights include:
-
-- Expansion into three new markets (Singapore, Brazil, and Germany) with positive initial customer acquisition rates
-- Launch of two new product lines, contributing 12% to total quarterly revenue
-- Strategic partnership with TechSolutions Inc. that grants access to their client base of over 5,000 enterprise customers
-- Identified challenges in supply chain management that require priority attention
-
-The document recommends focusing on scaling the Singapore market presence in Q2 while addressing the supply chain vulnerabilities through diversification of vendor relationships. Additionally, it suggests allocating 18% of the R&D budget toward enhancing the newest product line based on positive customer feedback and adoption rates.`;
-      
-      setSummary(result);
-      setIsSummarizing(false);
-    }, 3000);
-  }, [file]);
+    // Call the API to get file analysis with a focus on Gemini
+    onAnalyze?.(file, 'gemini')
+      .then(result => {  
+        if (result.summary) {
+          setSummary(result.summary);
+        } else if (result.gemini && !result.gemini.error) {
+          try {
+            // Handle new Gemini model response format
+            const geminiResults = result.gemini.results;
+            
+            if (geminiResults.candidates && geminiResults.candidates.length > 0) {
+              // Extract text from the first candidate
+              const candidate = geminiResults.candidates[0];
+              
+              if (candidate.content && candidate.content.parts) {
+                // Get text from the first text part
+                const textParts = candidate.content.parts.filter(part => part.text);
+                if (textParts.length > 0) {
+                  setSummary(textParts[0].text);
+                } else {
+                  setSummary('No text content found in response.');
+                }
+              } else {
+                setSummary('Unexpected response format.');
+              }
+            } else if (geminiResults.text) {
+              // Alternative format
+              setSummary(geminiResults.text);
+            } else {
+              // Fallback
+              setSummary(`Raw response: ${JSON.stringify(geminiResults, null, 2)}`);
+            }
+          } catch (error) {
+            setSummary(`Error generating summary: ${error.message}\nRaw response: ${JSON.stringify(result.gemini.results, null, 2)}`);
+          }
+        } else {
+          setSummary('No summary available. Please try again later.');
+        }
+        
+        setIsSummarizing(false);
+      })
+      .catch(error => {
+        console.error('Error summarizing file:', error);
+        setSummary(`# Summarization Error\n\nFailed to summarize file: ${error.message}`);
+        setIsSummarizing(false);
+      });
+  }, [file, onAnalyze]);
 
   const getFileIcon = (type) => {
     if (type.startsWith('image/')) return <Image className="h-8 w-8 text-blue-500" />;

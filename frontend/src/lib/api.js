@@ -146,6 +146,26 @@ export const api = {
     };
   },
 
+  // Analyze a file with AI
+  analyzeFile: async (file, service = 'both') => {
+    if (!file || !file.fileId) {
+      throw new Error('Invalid file object: missing fileId');
+    }
+    
+    return apiCall(`/files/${file.fileId}/analyze?service=${service}`, {
+      method: 'POST'
+    });
+  },
+
+  // Get file analysis
+  getFileAnalysis: async (file) => {
+    if (!file || !file.fileId) {
+      throw new Error('Invalid file object: missing fileId');
+    }
+    
+    return apiCall(`/files/${file.fileId}/analysis`);
+  },
+
   // Delete a file
   deleteFile: async (file) => {
     if (!file || !file.fileId) {

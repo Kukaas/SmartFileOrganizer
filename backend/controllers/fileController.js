@@ -1,6 +1,7 @@
 import { Device } from '../models/Device.js';
 import { File } from '../models/File.js';
 import { encryptContent, decryptContent } from '../utils/encryption.js';
+import { analyzeWithHuggingFace, analyzeWithGemini } from '../utils/aiService.js';
 
 // Get or create device
 const getOrCreateDevice = async (deviceId, deviceInfo) => {
@@ -194,6 +195,142 @@ export const fileController = {
     } catch (error) {
       console.error('Error downloading file:', error);
       res.status(500).json({ error: 'Failed to download file' });
+    }
+  },
+
+  // Analyze a file with AI
+  analyzeFile: async (req, res) => {
+    try {
+      const deviceId = req.headers['x-device-id'];
+      const { fileId } = req.params;
+      const { service = 'both' } = req.query; // 'huggingface', 'gemini', or 'both'
+
+      if (!deviceId) {
+        return res.status(400).json({ error: 'Device ID is required' });
+      }
+
+      // Find the file and include content for analysis
+      const file = await File.findOne({ deviceId, fileId }).select('+content');
+
+      if (!file) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      if (!file.content) {
+        return res.status(400).json({ error: 'File content not available for analysis' });
+      }
+
+      // Update file status to analyzing
+      file.status = 'analyzing';
+      await file.save();
+
+      let hfResults = null;
+      let geminiResults = null;
+
+      // Run the selected AI services analysis
+      if (service === 'huggingface' || service === 'both') {
+        hfResults = await analyzeWithHuggingFace(file);
+      }
+      
+      if (service === 'gemini' || service === 'both') {
+        geminiResults = await analyzeWithGemini(file);
+      }
+
+      // Update file with analysis results
+      const analysisUpdates = {
+        status: 'analyzed',
+        'analysis.lastAnalyzed': new Date()
+      };
+
+      if (hfResults) {
+        analysisUpdates['analysis.huggingface'] = hfResults;
+      }
+
+      if (geminiResults) {
+        analysisUpdates['analysis.gemini'] = geminiResults;
+      }
+
+      // Generate a summary from the Gemini analysis
+      let summary = null;
+      if (geminiResults && !geminiResults.error) {
+        try {
+          // Extract the text from Gemini's response using the new format
+          let geminiText = '';
+          
+          if (geminiResults.results.candidates && geminiResults.results.candidates.length > 0) {
+            const candidate = geminiResults.results.candidates[0];
+            
+            if (candidate.content && candidate.content.parts) {
+              // Get text from the first text part
+              const textParts = candidate.content.parts.filter(part => part.text);
+              if (textParts.length > 0) {
+                geminiText = textParts[0].text;
+              }
+            }
+          }
+          
+          if (geminiText) {
+            summary = geminiText;
+            analysisUpdates['summary.content'] = summary;
+            analysisUpdates['summary.lastGenerated'] = new Date();
+          }
+        } catch (error) {
+          console.error('Error extracting summary:', error);
+        }
+      }
+
+      // Update the file with analysis results
+      const updatedFile = await File.findOneAndUpdate(
+        { deviceId, fileId },
+        { $set: analysisUpdates },
+        { new: true }
+      );
+
+      res.json({
+        fileId,
+        status: 'analyzed',
+        huggingface: hfResults,
+        gemini: geminiResults,
+        summary: summary
+      });
+    } catch (error) {
+      console.error('Error analyzing file:', error);
+      
+      // Update file status to error
+      await File.findOneAndUpdate(
+        { deviceId: req.headers['x-device-id'], fileId: req.params.fileId },
+        { $set: { status: 'error' } }
+      );
+      
+      res.status(500).json({ error: 'Failed to analyze file' });
+    }
+  },
+
+  // Get analysis for a file
+  getFileAnalysis: async (req, res) => {
+    try {
+      const deviceId = req.headers['x-device-id'];
+      const { fileId } = req.params;
+
+      if (!deviceId) {
+        return res.status(400).json({ error: 'Device ID is required' });
+      }
+
+      const file = await File.findOne({ deviceId, fileId });
+
+      if (!file) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      res.json({
+        fileId,
+        status: file.status,
+        analysis: file.analysis || {},
+        summary: file.summary || {}
+      });
+    } catch (error) {
+      console.error('Error getting file analysis:', error);
+      res.status(500).json({ error: 'Failed to get file analysis' });
     }
   },
 
