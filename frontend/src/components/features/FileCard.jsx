@@ -13,7 +13,8 @@ import {
   Brain,
   FileSearch,
   Sparkles,
-  Download
+  Download,
+  FileOutput
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,8 @@ import {
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { exportToPDF, exportToDOCX } from '@/utils/documentExporter';
+import { ExportPreviewDialog } from './ExportPreviewDialog';
 
 // Component to cleanly display content without markdown conversion
 function ContentDisplay({ content, color = "purple" }) {
@@ -165,6 +168,8 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
   const [analysis, setAnalysis] = useState("");
   const [summary, setSummary] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [exportData, setExportData] = useState({ content: "", title: "", filename: "" });
   
   const menuTriggerRef = useRef(null);
   const inputRef = useRef(null);
@@ -408,6 +413,24 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
       });
   }, [file, onSummarize]);
 
+  // Handler for exporting analysis or summary
+  const handleExportClick = (type) => {
+    if (type === 'analysis') {
+      setExportData({
+        content: analysis,
+        title: `AI Analysis: ${file.name}`,
+        filename: `${file.name.split('.')[0]}-analysis`
+      });
+    } else {
+      setExportData({
+        content: summary,
+        title: `AI Summary: ${file.name}`,
+        filename: `${file.name.split('.')[0]}-summary`
+      });
+    }
+    setIsExportDialogOpen(true);
+  };
+
   const getFileIcon = (type) => {
     if (type.startsWith('image/')) return <Image className="h-8 w-8 text-blue-500" />;
     if (type === 'application/pdf') return <FileText className="h-8 w-8 text-red-500" />;
@@ -620,7 +643,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white to-purple-50">
             {isSummarizing ? (
               <div className="flex flex-col items-center justify-center py-6 bg-gray-50 rounded-lg">
                 <BookOpen className="h-10 w-10 text-purple-600 animate-pulse mb-3" />
@@ -654,19 +677,11 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             {!isSummarizing && summary && (
               <Button 
                 type="button"
-                className="bg-purple-600 hover:bg-purple-700"
-                onClick={() => {
-                  // Create a clean version of the summary with no $2 markers
-                  const cleanSummary = summary.replace(/^\$\d+$/gm, '').trim();
-                  const blob = new Blob([cleanSummary], { type: 'text/plain' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `${file.name.split('.')[0]}-summary.md`;
-                  a.click();
-                }}
+                className="bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800"
+                onClick={() => handleExportClick('summary')}
               >
-                Save Summary
+                <FileOutput className="h-4 w-4 mr-2" />
+                Export Summary
               </Button>
             )}
           </DialogFooter>
@@ -688,7 +703,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="py-1 flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white to-blue-50">
             {isAnalyzing ? (
               <div className="flex flex-col items-center justify-center py-6 bg-gray-50 rounded-lg">
                 <Brain className="h-10 w-10 text-blue-600 animate-pulse mb-3" />
@@ -722,24 +737,25 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
             {!isAnalyzing && analysis && (
               <Button 
                 type="button"
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => {
-                  // Create a clean version of the analysis
-                  const cleanAnalysis = analysis.replace(/\$\d+/g, '').trim();
-                  const blob = new Blob([cleanAnalysis], { type: 'text/plain' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `${file.name.split('.')[0]}-analysis.md`;
-                  a.click();
-                }}
+                className="bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800"
+                onClick={() => handleExportClick('analysis')}
               >
-                Save Analysis
+                <FileOutput className="h-4 w-4 mr-2" />
+                Export Analysis
               </Button>
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Export Preview Dialog */}
+      <ExportPreviewDialog
+        isOpen={isExportDialogOpen}
+        onClose={() => setIsExportDialogOpen(false)}
+        content={exportData.content}
+        title={exportData.title}
+        filename={exportData.filename}
+      />
     </>
   );
 }
