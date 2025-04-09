@@ -31,6 +31,15 @@ const fileSchema = new mongoose.Schema({
     type: Map,
     of: mongoose.Schema.Types.Mixed
   },
+  fileExtension: {
+    type: String,
+    default: ''
+  },
+  category: {
+    type: String,
+    enum: ['image', 'document', 'archive', 'code', 'media', 'other'],
+    default: 'other'
+  },
   analysis: {
     huggingface: {
       type: mongoose.Schema.Types.Mixed,
@@ -62,6 +71,37 @@ fileSchema.index({ deviceId: 1, fileId: 1 }, { unique: true });
 // Update lastModified on every save
 fileSchema.pre('save', function(next) {
   this.lastModified = new Date();
+  
+  // Extract file extension if not set
+  if (!this.fileExtension && this.name) {
+    const nameParts = this.name.split('.');
+    if (nameParts.length > 1) {
+      this.fileExtension = nameParts.pop().toLowerCase();
+    }
+  }
+  
+  // Determine file category if not set
+  if (!this.category || this.category === 'other') {
+    // Check type and extension to determine category
+    const docExtensions = ['pdf', 'doc', 'docx', 'txt', 'md', 'rtf'];
+    const codeExtensions = ['js', 'py', 'java', 'c', 'cpp', 'cs', 'html', 'css', 'php', 'rb', 'ts', 'jsx', 'tsx'];
+    const archiveExtensions = ['zip', 'rar', 'tar', 'gz', '7z'];
+    
+    if (this.type && this.type.startsWith('image/')) {
+      this.category = 'image';
+    } else if (this.type && (this.type.startsWith('video/') || this.type.startsWith('audio/'))) {
+      this.category = 'media';
+    } else if (this.fileExtension) {
+      if (docExtensions.includes(this.fileExtension)) {
+        this.category = 'document';
+      } else if (codeExtensions.includes(this.fileExtension)) {
+        this.category = 'code';
+      } else if (archiveExtensions.includes(this.fileExtension)) {
+        this.category = 'archive';
+      }
+    }
+  }
+  
   next();
 });
 

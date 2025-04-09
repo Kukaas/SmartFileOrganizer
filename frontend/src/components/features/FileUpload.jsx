@@ -39,16 +39,6 @@ export function FileUpload({ onFilesSelected }) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
-      'application/pdf': ['.pdf'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'text/plain': ['.txt'],
-      'application/zip': ['.zip'],
-      'video/*': ['.mp4', '.mov', '.avi'],
-      'audio/*': ['.mp3', '.wav'],
-    },
     noClick: true, // Disable click handling from react-dropzone
     useFsAccessApi: false, // Use the legacy API for better compatibility
     preventDropOnDocument: false, // Allow dropping anywhere in the document
@@ -76,7 +66,6 @@ export function FileUpload({ onFilesSelected }) {
           ref={fileInputRef}
           onChange={handleFileSelect}
           onClick={(e) => e.stopPropagation()}
-          accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx,.txt,.zip,.mp4,.mov,.avi,.mp3,.wav"
         />
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -88,7 +77,7 @@ export function FileUpload({ onFilesSelected }) {
                 {isDragActive ? 'Drop files here' : 'Drop files here'}
               </p>
               <p className="text-xs text-muted-foreground">
-                Supports images, documents, archives, video, and audio
+                Supports all file types
               </p>
             </div>
           </div>

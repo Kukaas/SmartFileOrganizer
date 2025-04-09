@@ -124,39 +124,81 @@ function App() {
         const fileId = Date.now().toString(36) + Math.random().toString(36).substr(2);
         const fileExtension = file.name.split('.').pop().toLowerCase();
         
-        // Determine file type, accounting for PDFs
+        // Determine file type
         let fileType = file.type;
-        if (fileExtension === 'pdf' && !file.type.includes('pdf')) {
-          fileType = 'application/pdf';
-        } else if ((fileExtension === 'docx' || fileExtension === 'doc') && !file.type.includes('document')) {
-          // Handle Word documents
-          fileType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        
+        // Handle common file types that might have incorrect MIME types
+        if (fileExtension && (!fileType || fileType === 'application/octet-stream')) {
+          const extensionTypeMappings = {
+            'pdf': 'application/pdf',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'doc': 'application/msword',
+            'txt': 'text/plain',
+            'js': 'text/javascript',
+            'py': 'text/x-python',
+            'md': 'text/markdown',
+            'env': 'text/plain',
+            'json': 'application/json',
+            'csv': 'text/csv',
+            'xml': 'application/xml',
+            'zip': 'application/zip',
+            'rar': 'application/vnd.rar',
+            'tar': 'application/x-tar',
+            'gz': 'application/gzip',
+            'mp3': 'audio/mpeg',
+            'wav': 'audio/wav',
+            'mp4': 'video/mp4',
+            'mov': 'video/quicktime',
+            'avi': 'video/x-msvideo',
+          };
+          
+          if (extensionTypeMappings[fileExtension]) {
+            fileType = extensionTypeMappings[fileExtension];
+          }
         }
         
         // Generate appropriate tags
         const tags = [];
         
-        // Add main type tag
-        const mainType = fileType.split('/')[0];
-        tags.push(mainType);
+        // Add main type tag if available
+        if (fileType && fileType.includes('/')) {
+          const mainType = fileType.split('/')[0];
+          tags.push(mainType);
+        }
         
         // Add file extension
         if (fileExtension) {
           tags.push(fileExtension);
         }
         
-        // Add document tag for PDFs and Word documents
+        // Add category tags based on extension or type
         if (fileExtension === 'pdf' || fileType === 'application/pdf' || 
             fileExtension === 'docx' || fileExtension === 'doc' || 
-            fileType.includes('document')) {
+            fileExtension === 'txt' || fileExtension === 'md') {
           tags.push('document');
+        } else if (fileExtension === 'js' || fileExtension === 'py' || 
+                  fileExtension === 'java' || fileExtension === 'c' || 
+                  fileExtension === 'cpp' || fileExtension === 'cs' || 
+                  fileExtension === 'html' || fileExtension === 'css' || 
+                  fileExtension === 'php' || fileExtension === 'rb') {
+          tags.push('code');
+        } else if (fileExtension === 'zip' || fileExtension === 'rar' || 
+                  fileExtension === 'tar' || fileExtension === 'gz' || 
+                  fileExtension === '7z') {
+          tags.push('archive');
+        } else if (fileType && fileType.startsWith('image/')) {
+          tags.push('image');
+        } else if (fileType && fileType.startsWith('video/')) {
+          tags.push('video');
+        } else if (fileType && fileType.startsWith('audio/')) {
+          tags.push('audio');
         }
         
         return {
           id: fileId, 
           fileId: fileId,
           name: file.name,
-          type: fileType,
+          type: fileType || 'application/octet-stream', // Default type if none detected
           size: file.size,
           dateAdded: new Date().toISOString(),
           tags: tags,
@@ -491,16 +533,29 @@ function App() {
     let matchesFilter = filterType === 'all';
     
     if (filterType === 'image') {
-      matchesFilter = file.type.startsWith('image/');
+      matchesFilter = file.type.startsWith('image/') || file.tags?.includes('image');
     } 
     else if (filterType === 'document') {
       matchesFilter = file.type.includes('document') || 
                       file.type === 'application/pdf' || 
                       file.name.toLowerCase().endsWith('.pdf') ||
-                      file.type.includes('text');
+                      file.type.includes('text') ||
+                      file.tags?.includes('document');
     }
     else if (filterType === 'media') {
-      matchesFilter = file.type.startsWith('video/') || file.type.startsWith('audio/');
+      matchesFilter = file.type.startsWith('video/') || 
+                      file.type.startsWith('audio/') ||
+                      file.tags?.includes('video') ||
+                      file.tags?.includes('audio');
+    }
+    else if (filterType === 'archive') {
+      matchesFilter = file.type.includes('zip') || 
+                      file.type.includes('archive') ||
+                      file.type.includes('compressed') ||
+                      file.tags?.includes('archive');
+    }
+    else if (filterType === 'code') {
+      matchesFilter = file.tags?.includes('code');
     }
     
     return matchesSearch && matchesFilter;

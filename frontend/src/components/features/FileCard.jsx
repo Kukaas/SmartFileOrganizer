@@ -176,14 +176,55 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
   const menuTriggerRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Check if file is a document or PDF
-  const isDocument = file.type === 'application/pdf' || 
-                    file.type.includes('document') || 
-                    file.name.toLowerCase().endsWith('.pdf') ||
-                    file.type.includes('text') ||
-                    file.name.toLowerCase().endsWith('.txt') ||
-                    file.name.toLowerCase().endsWith('.doc') ||
-                    file.name.toLowerCase().endsWith('.docx');
+  // Get file extension
+  const fileExtension = file.name.split('.').pop().toLowerCase();
+
+  // Check if file is a text-based, readable document that can be analyzed/summarized
+  const isAnalyzableDocument = (
+    // Document files
+    file.type === 'application/pdf' ||
+    file.type.includes('document') ||
+    fileExtension === 'pdf' ||
+    fileExtension === 'doc' ||
+    fileExtension === 'docx' ||
+    
+    // Text files
+    file.type.includes('text') ||
+    fileExtension === 'txt' ||
+    fileExtension === 'md' ||
+    fileExtension === 'rtf' ||
+    
+    // Code files (can also be analyzed)
+    fileExtension === 'js' ||
+    fileExtension === 'py' ||
+    fileExtension === 'html' ||
+    fileExtension === 'css' ||
+    fileExtension === 'json' ||
+    fileExtension === 'xml' ||
+    fileExtension === 'java' ||
+    fileExtension === 'c' ||
+    fileExtension === 'cpp' ||
+    fileExtension === 'cs'
+  );
+
+  // Check for non-analyzable file types
+  const isNonAnalyzableFile = (
+    // Images
+    file.type.startsWith('image/') ||
+    
+    // Videos and audio
+    file.type.startsWith('video/') ||
+    file.type.startsWith('audio/') ||
+    
+    // Archives
+    file.type.includes('zip') ||
+    file.type.includes('archive') ||
+    file.type.includes('compressed') ||
+    ['zip', 'rar', 'tar', 'gz', '7z'].includes(fileExtension) ||
+    
+    // Binaries and executables
+    ['exe', 'dll', 'bin', 'so', 'apk', 'app'].includes(fileExtension)
+  );
 
   const handleRename = () => {
     if (newFileName.trim() && newFileName !== file.name) {
@@ -434,12 +475,29 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
   };
 
   const getFileIcon = (type) => {
+    // Extract file extension from name
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    
+    // Check type and extension to determine the appropriate icon
     if (type.startsWith('image/')) return <Image className="h-8 w-8 text-blue-500" />;
     if (type === 'application/pdf') return <FileText className="h-8 w-8 text-red-500" />;
     if (type.startsWith('video/')) return <Video className="h-8 w-8 text-purple-500" />;
     if (type.startsWith('audio/')) return <Music className="h-8 w-8 text-green-500" />;
-    if (type.includes('zip') || type.includes('archive') || type.includes('compressed')) 
+    if (type.includes('zip') || type.includes('archive') || type.includes('compressed') || 
+        ['zip', 'rar', 'tar', 'gz', '7z'].includes(fileExtension)) 
       return <FileArchive className="h-8 w-8 text-amber-500" />;
+        
+    // Code file icons
+    if (['js', 'py', 'java', 'c', 'cpp', 'cs', 'php', 'rb', 'html', 'css', 'ts', 'jsx', 'tsx'].includes(fileExtension)) {
+      return <File className="h-8 w-8 text-emerald-500" />;
+    }
+    
+    // Document icons
+    if (['doc', 'docx', 'txt', 'md', 'rtf'].includes(fileExtension)) {
+      return <FileText className="h-8 w-8 text-blue-500" />;
+    }
+    
+    // Default icon for all other files
     return <File className="h-8 w-8 text-gray-500" />;
   };
 
@@ -537,7 +595,7 @@ export function FileCard({ file, onDelete, onRename, onAnalyze, onSummarize, onD
                     </span>
                   </DropdownMenuItem>
                   
-                  {isDocument && (
+                  {isAnalyzableDocument && !isNonAnalyzableFile && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel className="text-xs text-gray-500">AI Tools</DropdownMenuLabel>

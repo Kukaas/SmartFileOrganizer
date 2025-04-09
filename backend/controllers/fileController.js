@@ -44,6 +44,35 @@ export const fileController = {
           return null;
         }
         
+        // Extract file extension if available
+        let fileExtension = '';
+        if (file.name) {
+          const nameParts = file.name.split('.');
+          if (nameParts.length > 1) {
+            fileExtension = nameParts.pop().toLowerCase();
+          }
+        }
+        
+        // Determine file category
+        let category = 'other';
+        const docExtensions = ['pdf', 'doc', 'docx', 'txt', 'md', 'rtf'];
+        const codeExtensions = ['js', 'py', 'java', 'c', 'cpp', 'cs', 'html', 'css', 'php', 'rb', 'ts', 'jsx', 'tsx'];
+        const archiveExtensions = ['zip', 'rar', 'tar', 'gz', '7z'];
+        
+        if (file.type && file.type.startsWith('image/')) {
+          category = 'image';
+        } else if (file.type && (file.type.startsWith('video/') || file.type.startsWith('audio/'))) {
+          category = 'media';
+        } else if (fileExtension) {
+          if (docExtensions.includes(fileExtension)) {
+            category = 'document';
+          } else if (codeExtensions.includes(fileExtension)) {
+            category = 'code';
+          } else if (archiveExtensions.includes(fileExtension)) {
+            category = 'archive';
+          }
+        }
+        
         // Handle file content if present
         let encryptedContent = undefined;
         if (file.content) {
@@ -67,6 +96,8 @@ export const fileController = {
             status: file.status,
             dateAdded: file.dateAdded,
             lastModified: new Date(),
+            fileExtension,
+            category,
             ...(encryptedContent && { content: encryptedContent })
           },
           { upsert: true, new: true }

@@ -1,5 +1,6 @@
 import { Search, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -30,6 +31,8 @@ export function SearchBar({ onSearch, onFilterChange }) {
             <SelectItem value="image">Images</SelectItem>
             <SelectItem value="document">Documents & PDFs</SelectItem>
             <SelectItem value="media">Audio & Video</SelectItem>
+            <SelectItem value="archive">Archives</SelectItem>
+            <SelectItem value="code">Code Files</SelectItem>
           </SelectContent>
         </Select>
       </div>
