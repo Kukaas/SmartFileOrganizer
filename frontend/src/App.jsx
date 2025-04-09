@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FileUpload } from '@/components/features/FileUpload';
 import { FileGrid } from '@/components/features/FileGrid';
 import { SearchBar } from '@/components/features/SearchBar';
@@ -108,14 +108,39 @@ function App() {
     try {
       const filePromises = newFiles.map(async (file) => {
         const fileId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        
+        // Determine file type, accounting for PDFs
+        let fileType = file.type;
+        if (fileExtension === 'pdf' && !file.type.includes('pdf')) {
+          fileType = 'application/pdf';
+        }
+        
+        // Generate appropriate tags
+        const tags = [];
+        
+        // Add main type tag
+        const mainType = fileType.split('/')[0];
+        tags.push(mainType);
+        
+        // Add file extension
+        if (fileExtension) {
+          tags.push(fileExtension);
+        }
+        
+        // Add document tag for PDFs
+        if (fileExtension === 'pdf' || fileType === 'application/pdf') {
+          tags.push('document');
+        }
+        
         return {
-          id: fileId, // For frontend reference
-          fileId: fileId, // For backend reference
+          id: fileId, 
+          fileId: fileId,
           name: file.name,
-          type: file.type,
+          type: fileType,
           size: file.size,
           dateAdded: new Date().toISOString(),
-          tags: [file.type.split('/')[0], file.name.split('.').pop().toLowerCase()],
+          tags: tags,
           status: 'pending_analysis',
           url: URL.createObjectURL(file)
         };
@@ -211,64 +236,63 @@ function App() {
 
   const filteredFiles = files.filter(file => {
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filterType === 'all' || 
-      (filterType === 'image' && file.type.startsWith('image/')) ||
-      (filterType === 'document' && (
-        file.type.includes('document') ||
-        file.type.includes('pdf') ||
-        file.type.includes('text')
-      )) ||
-      (filterType === 'media' && (
-        file.type.startsWith('video/') ||
-        file.type.startsWith('audio/')
-      ));
+    
+    // Check file type for filtering
+    let matchesFilter = filterType === 'all';
+    
+    if (filterType === 'image') {
+      matchesFilter = file.type.startsWith('image/');
+    } 
+    else if (filterType === 'document') {
+      matchesFilter = file.type.includes('document') || 
+                      file.type === 'application/pdf' || 
+                      file.name.toLowerCase().endsWith('.pdf') ||
+                      file.type.includes('text');
+    }
+    else if (filterType === 'media') {
+      matchesFilter = file.type.startsWith('video/') || file.type.startsWith('audio/');
+    }
     
     return matchesSearch && matchesFilter;
   });
 
   return (
-    <div className="min-h-[600px] w-[800px] overflow-y-auto p-4">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Smart File Organizer</h1>
-          <div className="flex items-center gap-2">
-            {isLoading && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Processing...</span>
-              </div>
-            )}
-            {syncError && (
-              <div className="text-sm text-yellow-600">
-                {syncError}
-              </div>
-            )}
+    <div className="relative h-[600px] w-[800px]">
+      <div className="absolute top-0 left-0 right-0 z-10 bg-white pt-4 px-4 pb-2 border-b border-gray-100 shadow-sm">
+        <div className="mb-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">Smart File Organizer</h1>
+            <div className="flex items-center gap-2">
+              {isLoading && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Processing...</span>
+                </div>
+              )}
+              {syncError && (
+                <div className="text-sm text-yellow-600">
+                  {syncError}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <FileUpload onFilesSelected={handleFilesSelected} />
+        <div className="space-y-3">
+          <FileUpload onFilesSelected={handleFilesSelected} />
+          <SearchBar
+            onSearch={setSearchQuery}
+            onFilterChange={setFilterType}
+          />
+        </div>
+      </div>
 
-        <SearchBar
-          onSearch={setSearchQuery}
-          onFilterChange={setFilterType}
-        />
-
+      <div className="absolute top-[220px] bottom-0 left-0 right-0 overflow-y-auto px-4 pb-4">
         <FileGrid
           files={filteredFiles}
           onDelete={handleDelete}
           onRename={handleRename}
         />
-
-        {!isLoading && filteredFiles.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No files found. Add files by:</p>
-            <ul className="mt-2">
-              <li>Dragging and dropping files here</li>
-              <li>Right-clicking on files/images in web pages</li>
-              <li>Dragging files from web pages</li>
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );

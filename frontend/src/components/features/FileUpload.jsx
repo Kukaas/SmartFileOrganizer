@@ -9,16 +9,20 @@ export function FileUpload({ onFilesSelected }) {
   const fileInputRef = useRef(null);
 
   const onDrop = useCallback((acceptedFiles) => {
-    setFiles(prev => [...prev, ...acceptedFiles]);
-    onFilesSelected?.(acceptedFiles);
+    if (acceptedFiles && acceptedFiles.length > 0) {
+      setFiles(prev => [...prev, ...acceptedFiles]);
+      onFilesSelected?.(acceptedFiles);
+    }
   }, [onFilesSelected]);
 
   const handleFileSelect = (event) => {
     event.preventDefault();
     event.stopPropagation();
-    const selectedFiles = Array.from(event.target.files);
-    setFiles(prev => [...prev, ...selectedFiles]);
-    onFilesSelected?.(selectedFiles);
+    const selectedFiles = Array.from(event.target.files || []);
+    if (selectedFiles.length > 0) {
+      setFiles(prev => [...prev, ...selectedFiles]);
+      onFilesSelected?.(selectedFiles);
+    }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -30,6 +34,8 @@ export function FileUpload({ onFilesSelected }) {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
     },
     noClick: true, // Disable click handling from react-dropzone
+    useFsAccessApi: false, // Use the legacy API for better compatibility
+    preventDropOnDocument: false, // Allow dropping anywhere in the document
   });
 
   const removeFile = (fileToRemove) => {
@@ -46,7 +52,7 @@ export function FileUpload({ onFilesSelected }) {
     <div className="w-full">
       <Card
         {...getRootProps()}
-        className={`p-8 border-2 border-dashed transition-colors
+        className={`p-4 border-2 border-dashed transition-colors cursor-pointer
           ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'}`}
       >
         <input 
@@ -54,45 +60,52 @@ export function FileUpload({ onFilesSelected }) {
           ref={fileInputRef}
           onChange={handleFileSelect}
           onClick={(e) => e.stopPropagation()}
+          accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx"
         />
-        <div className="flex flex-col items-center justify-center gap-4">
-          <Upload className="h-10 w-10 text-muted-foreground" />
-          <div className="text-center">
-            <p className="text-lg font-medium">
-              {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-2"
-              onClick={handleButtonClick}
-            >
-              Select Files
-            </Button>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/5 rounded-md">
+              <Upload className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">
+                {isDragActive ? 'Drop files here' : 'Drop files here or'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Support images, PDFs, and documents
+              </p>
+            </div>
           </div>
+          <Button
+            type="button"
+            size="sm"
+            className="bg-primary hover:bg-primary/90"
+            onClick={handleButtonClick}
+          >
+            Select Files
+          </Button>
         </div>
       </Card>
 
       {files.length > 0 && (
-        <div className="mt-4 space-y-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {files.map((file, index) => (
             <div
               key={index}
-              className="flex items-center justify-between p-2 bg-muted rounded-lg"
+              className="flex items-center gap-2 py-1 px-2 bg-muted rounded-full text-xs"
             >
-              <div className="flex items-center gap-2">
-                <File className="h-4 w-4" />
-                <span className="text-sm">{file.name}</span>
-              </div>
+              <File className="h-3 w-3" />
+              <span className="max-w-[120px] truncate">{file.name}</span>
               <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   removeFile(file);
                 }}
-                className="p-1 hover:bg-muted-foreground/10 rounded-full"
+                className="p-0.5 hover:bg-muted-foreground/10 rounded-full"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3 w-3" />
               </button>
             </div>
           ))}

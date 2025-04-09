@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { File, Image, FileText, MoreVertical } from 'lucide-react';
+import { File, Image, FileText, MoreVertical, FileArchive, Video, Music } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function FileCard({ file, onDelete, onRename }) {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
@@ -46,9 +47,13 @@ export function FileCard({ file, onDelete, onRename }) {
   }, [file, onDelete]);
 
   const getFileIcon = (type) => {
-    if (type.startsWith('image/')) return <Image className="h-6 w-6" />;
-    if (type === 'application/pdf') return <FileText className="h-6 w-6" />;
-    return <File className="h-6 w-6" />;
+    if (type.startsWith('image/')) return <Image className="h-8 w-8 text-blue-500" />;
+    if (type === 'application/pdf') return <FileText className="h-8 w-8 text-red-500" />;
+    if (type.startsWith('video/')) return <Video className="h-8 w-8 text-purple-500" />;
+    if (type.startsWith('audio/')) return <Music className="h-8 w-8 text-green-500" />;
+    if (type.includes('zip') || type.includes('archive') || type.includes('compressed')) 
+      return <FileArchive className="h-8 w-8 text-amber-500" />;
+    return <File className="h-8 w-8 text-gray-500" />;
   };
 
   const formatFileSize = (bytes) => {
@@ -59,55 +64,95 @@ export function FileCard({ file, onDelete, onRename }) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Format file date
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  // Truncate filename if it's too long
+  const truncateFilename = (name, maxLength = 20) => {
+    if (name.length <= maxLength) return name;
+    
+    const extension = name.includes('.') ? name.split('.').pop() : '';
+    const nameWithoutExt = name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : name;
+    
+    if (nameWithoutExt.length <= maxLength) return name;
+    
+    return `${nameWithoutExt.substring(0, maxLength)}...${extension ? `.${extension}` : ''}`;
+  };
+
   return (
     <>
-      <Card className="p-4 hover:shadow-md transition-shadow">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            {getFileIcon(file.type)}
-            <div className="space-y-1">
-              <p className="text-sm font-medium leading-none">{file.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {formatFileSize(file.size)}
-              </p>
+      <Card className="p-4 hover:shadow-md transition-shadow bg-gradient-to-br from-white to-gray-50 border-gray-200">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="p-2 bg-white rounded-md shadow-sm flex items-center justify-center shrink-0">
+              {getFileIcon(file.type)}
+            </div>
+            <div className="space-y-1 overflow-hidden min-w-0">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <p className="font-medium leading-tight truncate" title={file.name}>
+                      {truncateFilename(file.name)}
+                    </p>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{file.name}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{formatFileSize(file.size)}</span>
+                {file.dateAdded && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                    <span>{formatDate(file.dateAdded)}</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-          <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-            <DropdownMenuTrigger asChild>
-              <button
-                ref={menuTriggerRef}
-                className="p-1 hover:bg-muted rounded-full"
-                aria-label="File options"
-                type="button"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent 
-                align="end" 
-                side="right"
-                sideOffset={5}
-                className="z-50"
-              >
-                <DropdownMenuItem onSelect={openRenameDialog}>
-                  Rename
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onSelect={handleDelete}
-                  className="text-destructive"
+          <div className="shrink-0">
+            <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  ref={menuTriggerRef}
+                  className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                  aria-label="File options"
+                  type="button"
                 >
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuContent 
+                  align="end" 
+                  side="right"
+                  sideOffset={5}
+                  className="z-50"
+                >
+                  <DropdownMenuItem onSelect={openRenameDialog} className="gap-2">
+                    <span className="text-sm">Rename</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onSelect={handleDelete}
+                    className="text-red-500 gap-2"
+                  >
+                    <span className="text-sm">Delete</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
+            </DropdownMenu>
+          </div>
         </div>
 
         {file.tags && file.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1">
             {file.tags.map((tag, index) => (
-              <Badge key={index} variant="secondary">
+              <Badge key={index} variant="secondary" className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 hover:bg-gray-200">
                 {tag}
               </Badge>
             ))}
@@ -126,7 +171,7 @@ export function FileCard({ file, onDelete, onRename }) {
           <DialogHeader>
             <DialogTitle>Rename File</DialogTitle>
             <DialogDescription>
-              Enter a new name for "{file.name}"
+              Enter a new name for "{truncateFilename(file.name, 30)}"
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -136,6 +181,7 @@ export function FileCard({ file, onDelete, onRename }) {
               onChange={(e) => setNewFileName(e.target.value)}
               placeholder="Enter new file name"
               aria-label="New file name"
+              className="focus-visible:ring-blue-500"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleRename();
@@ -154,6 +200,7 @@ export function FileCard({ file, onDelete, onRename }) {
             <Button 
               type="button"
               onClick={handleRename}
+              className="bg-blue-600 hover:bg-blue-700"
             >
               Rename
             </Button>
