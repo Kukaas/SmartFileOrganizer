@@ -67,6 +67,22 @@ function App() {
     setSelectedFiles([]); // Clear selections when changing folders
   };
   
+  // Enhance delete folder to ensure files list is refreshed after deletion
+  const handleEnhancedDeleteFolder = async (folderId) => {
+    try {
+      await handleDeleteFolder(folderId);
+      // After folder is deleted, refresh files to update UI
+      await refreshFiles();
+      
+      // If we were in the deleted folder, make sure to update the current folder too
+      if (currentFolderId === folderId) {
+        setCurrentFolderId(null);
+      }
+    } catch (error) {
+      console.error('Error in enhanced folder deletion:', error);
+    }
+  };
+  
   // Open the move dialog for selected files
   const handleOpenMoveDialog = () => {
     if (selectedFiles.length > 0) {
@@ -139,7 +155,7 @@ function App() {
         onFolderSelect={handleFolderSelect}
         onCreateFolder={handleCreateFolder}
         onRenameFolder={handleRenameFolder}
-        onDeleteFolder={handleDeleteFolder}
+        onDeleteFolder={handleEnhancedDeleteFolder}
         currentFolderName={currentFolderName}
         filteredFiles={filteredFiles}
         selectedFiles={selectedFiles}

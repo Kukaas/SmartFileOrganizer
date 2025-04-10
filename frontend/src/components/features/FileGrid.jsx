@@ -21,18 +21,16 @@ export function FileGrid({
 
   return (
     <div className="w-full h-full relative">
-      {/* Loading overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-2">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Loading...</p>
-          </div>
-        </div>
-      )}
-      
       <ScrollArea className="h-full w-full pr-2">
-        {files.length === 0 ? (
+        {isLoading ? (
+          <div className="h-full flex flex-col items-center justify-center text-center p-8">
+            <Loader2 className="h-10 w-10 text-muted-foreground mb-3 animate-spin" />
+            <h3 className="text-lg font-medium text-foreground mb-2">Loading files</h3>
+            <p className="text-sm text-muted-foreground">
+              Please wait while we fetch your files.
+            </p>
+          </div>
+        ) : files.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8">
             <FileX className="h-10 w-10 text-muted-foreground mb-3" />
             <h3 className="text-lg font-medium text-foreground mb-2">No files found</h3>

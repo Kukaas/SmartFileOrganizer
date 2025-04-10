@@ -758,18 +758,16 @@ export function FileCard({
   return (
     <Card className={`overflow-hidden ${isSelected ? 'ring-2 ring-primary border-primary' : ''} relative`}>
       {/* Loading overlay for operations */}
-      {(isDeleting || isRenaming || isDownloading || isMoving) && (
+      {(isDeleting || isRenaming || isDownloading) && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-30 flex flex-col items-center justify-center">
           <Loader2 className={`h-8 w-8 mb-2 animate-spin ${
             isDeleting ? 'text-red-500' : 
             isRenaming ? 'text-blue-500' : 
-            isMoving ? 'text-amber-500' :
             'text-green-500'
           }`} />
           <p className="text-sm font-medium">
             {isDeleting && 'Deleting...'}
             {isRenaming && 'Renaming...'}
-            {isMoving && 'Moving...'}
             {isDownloading && 'Downloading...'}
           </p>
         </div>
