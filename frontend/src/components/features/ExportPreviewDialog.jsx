@@ -211,7 +211,7 @@ export function ExportPreviewDialog({
             size="sm"
             onClick={handleExport}
             disabled={exporting || exportSuccess}
-            className="h-7 px-2 text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            className="h-7 px-2 text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
           >
             {exporting ? 'Exporting...' : `Export as ${exportFormat.toUpperCase()}`}
           </Button>

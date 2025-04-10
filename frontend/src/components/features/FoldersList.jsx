@@ -1,13 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { 
   FolderIcon, 
   PlusCircle, 
   ChevronRight, 
   ChevronDown, 
   MoreVertical, 
-  Pencil, 
-  Trash2,
-  FolderPlus,
   Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

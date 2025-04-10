@@ -1,64 +1,64 @@
 import { FileCard } from './FileCard';
-import { motion } from 'framer-motion';
 import { Loader2, FileX } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function FileGrid({ 
   files, 
-  selectedFiles = [], 
+  selectedFiles = [],
   onToggleSelect,
   onDelete, 
   onRename, 
   onAnalyze, 
   onSummarize, 
-  onDownload, 
-  isLoading 
+  onDownload,
+  isLoading = false,
+  isFileBeingMoved
 }) {
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-full flex flex-col items-center justify-center py-12 bg-muted/50 rounded-lg border border-dashed border-border">
-          <Loader2 className="h-12 w-12 text-muted-foreground animate-spin mb-4" />
-          <p className="text-lg font-medium text-foreground mb-1">Loading your files...</p>
-          <p className="text-sm text-muted-foreground">Please wait while we fetch your data</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (files.length === 0) {
-    return (
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-full flex flex-col items-center justify-center py-12 bg-muted/50 rounded-lg border border-dashed border-border">
-          <FileX 
-            className="h-10 w-10 text-muted-foreground mb-3"
-          />
-          <p className="text-lg font-medium text-foreground mb-1">No files found</p>
-          <p className="text-sm text-muted-foreground">Upload some files to get started</p>
-        </div>
-      </div>
-    );
-  }
+  // Helper function to check if a file is selected
+  const isFileSelected = (file) => {
+    return selectedFiles.some(f => f.fileId === file.fileId);
+  };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {files.map((file) => {
-        const isSelected = selectedFiles.some(f => f.fileId === file.fileId);
-        
-        return (
-          <div key={file.fileId || file.id}>
-            <FileCard 
-              file={file} 
-              isSelected={isSelected}
-              onToggleSelect={onToggleSelect}
-              onDelete={onDelete}
-              onRename={onRename}
-              onAnalyze={onAnalyze}
-              onSummarize={onSummarize}
-              onDownload={onDownload}
-            />
+    <div className="w-full h-full relative">
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading...</p>
           </div>
-        );
-      })}
+        </div>
+      )}
+      
+      <ScrollArea className="h-full w-full pr-2">
+        {files.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center p-8">
+            <FileX className="h-10 w-10 text-muted-foreground mb-3" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No files found</h3>
+            <p className="text-sm text-muted-foreground">
+              Upload some files to get started or change your search query.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 py-2">
+            {files.map((file) => (
+              <FileCard
+                key={file.fileId}
+                file={file}
+                isSelected={isFileSelected(file)}
+                onToggleSelect={onToggleSelect}
+                onDelete={onDelete}
+                onRename={onRename}
+                onAnalyze={onAnalyze}
+                onSummarize={onSummarize}
+                onDownload={onDownload}
+                isMoving={isFileBeingMoved ? isFileBeingMoved(file) : false}
+              />
+            ))}
+          </div>
+        )}
+      </ScrollArea>
     </div>
   );
 } 

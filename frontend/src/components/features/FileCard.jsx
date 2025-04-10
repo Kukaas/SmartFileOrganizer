@@ -41,7 +41,6 @@ import {
   DropdownMenuGroup,
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ExportPreviewDialog } from './ExportPreviewDialog';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
@@ -171,7 +170,8 @@ export function FileCard({
   onRename, 
   onAnalyze, 
   onSummarize, 
-  onDownload 
+  onDownload,
+  isMoving = false
 }) {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [newFileName, setNewFileName] = useState(file.name);
@@ -245,17 +245,21 @@ export function FileCard({
 
   const handleRename = useCallback(() => {
     if (newFileName.trim() && newFileName !== file.name) {
-      setIsRenaming(true);
+      setIsRenameDialogOpen(false); // Close dialog immediately
+      setIsRenaming(true); // Show loading state in the card
       Promise.resolve(onRename?.(file, newFileName.trim()))
         .then(() => {
+          // Success is handled by the App component
         })
         .catch(error => {
+          toast.error(`Failed to rename file: ${error.message || 'Unknown error'}`);
         })
         .finally(() => {
           setIsRenaming(false);
         });
+    } else {
+      setIsRenameDialogOpen(false);
     }
-    setIsRenameDialogOpen(false);
   }, [file, newFileName, onRename]);
 
   const openRenameDialog = () => {
@@ -754,16 +758,18 @@ export function FileCard({
   return (
     <Card className={`overflow-hidden ${isSelected ? 'ring-2 ring-primary border-primary' : ''} relative`}>
       {/* Loading overlay for operations */}
-      {(isDeleting || isRenaming || isDownloading) && (
+      {(isDeleting || isRenaming || isDownloading || isMoving) && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-30 flex flex-col items-center justify-center">
           <Loader2 className={`h-8 w-8 mb-2 animate-spin ${
             isDeleting ? 'text-red-500' : 
             isRenaming ? 'text-blue-500' : 
+            isMoving ? 'text-amber-500' :
             'text-green-500'
           }`} />
           <p className="text-sm font-medium">
             {isDeleting && 'Deleting...'}
             {isRenaming && 'Renaming...'}
+            {isMoving && 'Moving...'}
             {isDownloading && 'Downloading...'}
           </p>
         </div>
@@ -947,9 +953,9 @@ export function FileCard({
               type="button"
               onClick={handleRename}
               className="bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white"
-              disabled={isRenaming || newFileName.trim() === '' || newFileName === file.name}
+              disabled={newFileName.trim() === '' || newFileName === file.name}
             >
-              {isRenaming ? 'Renaming...' : 'Rename'}
+              Rename
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1185,7 +1191,7 @@ export function FileCard({
              !fileDetails.isArchive && !fileDetails.isPdf && !fileDetails.isDocx && (
               <Button 
                 type="button"
-                className="bg-gradient-to-r from-cyan-500 to-cyan-700 hover:from-cyan-600 hover:to-cyan-800"
+                className="bg-gradient-to-r from-cyan-500 to-cyan-700 hover:from-cyan-600 hover:to-cyan-800 text-white"
                 onClick={() => {
                   const blob = new Blob([fileDetails.content], { type: file.type || 'text/plain' });
                   const url = URL.createObjectURL(blob);
