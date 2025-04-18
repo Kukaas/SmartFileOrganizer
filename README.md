@@ -107,21 +107,25 @@ vercel
 vercel --prod
 ```
 
-6. Create new file .env.production and run. After building refresh the extention in you browser
-```bash
-npm run build:extension
-```
-
 ### 5. Extension Setup
 
 1. Navigate to extension directory:
 ```bash
 cd frontend
 npm install
+```
+
+2. Create `.env.production` file:
+```env
+VITE_API_BASE_URL=your_vercel_api.vercel.app/api
+```
+
+3. Build the extension:
+```bash
 npm run build:extension
 ```
 
-2. Load in Chrome:
+4. Load in Chrome:
    - Open Chrome → Extensions → Enable Developer mode
    - Click "Load unpacked"
    - Select the extension's `dist` directory
