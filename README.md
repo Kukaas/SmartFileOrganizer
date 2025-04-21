@@ -166,4 +166,4 @@ MIT License - See LICENSE file for details
 
 # Author
 
-CHESTER LUKE MALIGASO
+CHESTER LUKE A. MALIGASO
